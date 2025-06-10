@@ -3,7 +3,6 @@ Database configuration and session management
 """
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
@@ -11,11 +10,11 @@ from app.config import settings
 # Create async engine
 engine = create_async_engine(
     settings.database_url_asyncpg,
-    echo=settings.DEBUG,
+    echo=settings.app.debug,
     future=True,
     pool_pre_ping=True,
     # Use NullPool for serverless environments
-    poolclass=NullPool if settings.ENVIRONMENT == "production" else None,
+    poolclass=NullPool if settings.app.environment == "production" else None,
 )
 
 # Create async session factory
@@ -27,8 +26,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-# Create declarative base
-Base = declarative_base()
+# Import models to ensure they are registered with Base
+from app.models.base import Base
+from app.models import User, Field, Project, Task
 
 
 # Dependency to get DB session
