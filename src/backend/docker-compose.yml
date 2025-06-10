@@ -1,0 +1,55 @@
+version: '3.9'
+
+services:
+  # Local PostgreSQL for development
+  postgres:
+    image: postgres:16-alpine
+    container_name: gtd_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gtd_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # GTD Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.alpine
+    container_name: gtd_backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/gtd_dev
+      - ENVIRONMENT=development
+      - DEBUG=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Test database
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: gtd_postgres_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gtd_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  postgres_data:

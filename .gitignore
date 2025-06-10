@@ -4,6 +4,13 @@
 .env.production
 .env.test
 
+# Config files with credentials
+config/config.yaml
+config/config.local.yaml
+config/config.production.yaml
+# Keep the example
+!config/config.example.yaml
+
 # Python
 __pycache__/
 *.py[cod]

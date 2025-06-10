@@ -1,0 +1,118 @@
+# GTD System Configuration
+# This file contains all configuration parameters for the entire GTD system
+
+# Application Settings
+app:
+  name: "GTD Backend API"
+  version: "0.1.0"
+  environment: "development"  # development, testing, production
+  debug: true
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# Database Configuration
+database:
+  # Supabase connection
+  supabase:
+    url: "https://your-project.supabase.co"
+    service_role_key: "your-service-role-key"
+  
+  # Direct PostgreSQL connection (optional, constructed from Supabase URL if not provided)
+  postgres:
+    url: null  # postgresql+asyncpg://user:password@host:port/database
+  
+  # Test database
+  test:
+    url: "postgresql+asyncpg://postgres:postgres@localhost:5432/gtd_test"
+
+# Security Configuration
+security:
+  secret_key: "your-secret-key-change-this-in-production"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# CORS Configuration
+cors:
+  origins:
+    - "http://localhost:3000"  # Next.js frontend
+    - "http://localhost:8000"  # Backend docs
+    - "https://your-frontend.vercel.app"  # Production frontend
+  allow_credentials: true
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# API Configuration
+api:
+  prefix: "/api"
+  docs_url: "/api/docs"
+  redoc_url: "/api/redoc"
+  openapi_url: "/api/openapi.json"
+
+# Pagination
+pagination:
+  default_limit: 20
+  max_limit: 100
+
+# GTD Specific Settings
+gtd:
+  # Default user for development
+  default_user_id: "00000000-0000-0000-0000-000000000001"
+  
+  # Task settings
+  tasks:
+    auto_archive_after_days: 365
+    reminder_before_due_hours: 24
+  
+  # Project settings
+  projects:
+    auto_complete_when_all_tasks_done: false
+    
+  # Weekly review settings
+  weekly_review:
+    default_day: 0  # 0=Sunday, 1=Monday, etc.
+    reminder_enabled: true
+
+# Feature Flags
+features:
+  authentication_enabled: false  # Start without auth, enable later
+  real_time_updates: false
+  email_notifications: false
+  export_import: true
+
+# External Services
+services:
+  # Email service (future)
+  email:
+    provider: null  # sendgrid, ses, smtp
+    from_address: "noreply@gtd-system.com"
+  
+  # File storage (future)
+  storage:
+    provider: "supabase"  # supabase, s3, local
+    bucket: "gtd-attachments"
+
+# Development Settings
+development:
+  # Test data generation
+  seed_data:
+    users: 1
+    projects_per_user: 10
+    tasks_per_project: 5
+  
+  # Development tools
+  auto_reload: true
+  show_sql_queries: true
+
+# Docker Configuration
+docker:
+  image_name: "gtd-backend"
+  alpine_version: "3.19"
+  python_version: "3.11"
