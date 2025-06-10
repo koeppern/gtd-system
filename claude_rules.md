@@ -1,0 +1,1 @@
+- git commit after each finished claude code task given by user
