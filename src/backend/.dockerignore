@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+README.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.pytest_cache
+nosetests.xml
+.cache
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Virtual environments
+venv
+.venv
+env
+.env
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Tests
+tests/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Development
+.env.example
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile.dev
+
+# Documentation
+docs/
+*.md
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/

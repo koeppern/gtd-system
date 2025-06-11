@@ -1,55 +1,97 @@
-version: '3.9'
+version: '3.8'
 
 services:
-  # Local PostgreSQL for development
-  postgres:
-    image: postgres:16-alpine
-    container_name: gtd_postgres
+  # GTD Backend API
+  gtd-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gtd-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: gtd_dev
+      - CONFIG_FILE=config.yaml
+      - POSTGRES_URL=${POSTGRES_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      # Mount config file
+      - ../../config/config.yaml:/app/config/config.yaml:ro
+      # Mount logs directory
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+    networks:
+      - gtd-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (for local development)
+  postgres:
+    image: postgres:15-alpine
+    container_name: gtd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gtd_db
+      POSTGRES_USER: gtd_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gtd_password_change_me}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - gtd-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U gtd_user -d gtd_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # GTD Backend API
-  backend:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.alpine
-    container_name: gtd_backend
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/gtd_dev
-      - ENVIRONMENT=development
-      - DEBUG=true
+  # Redis (for caching and sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: gtd-redis
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "6379:6379"
     volumes:
-      - ./app:/app/app:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - redis_data:/data
+    networks:
+      - gtd-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Test database
-  postgres_test:
-    image: postgres:16-alpine
-    container_name: gtd_postgres_test
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: gtd_test
+  # Nginx (reverse proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: gtd-nginx
+    restart: unless-stopped
     ports:
-      - "5433:5432"
-    tmpfs:
-      - /var/lib/postgresql/data
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - gtd-backend
+    networks:
+      - gtd-network
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  gtd-network:
+    driver: bridge

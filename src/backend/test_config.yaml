@@ -1,0 +1,113 @@
+# Test Configuration for GTD Backend
+# This file is used specifically for running tests
+
+# Application Settings
+app:
+  name: "GTD Backend API (TEST)"
+  version: "0.1.0"
+  environment: "testing"
+  debug: true
+
+# Server Configuration
+server:
+  host: "127.0.0.1"
+  port: 8001  # Different port for tests
+
+# Database Configuration
+database:
+  # Use in-memory SQLite for tests
+  supabase:
+    url: "sqlite+aiosqlite:///:memory:"
+    service_role_key: "test-key"
+  
+  postgres:
+    url: null
+  
+  # Test database (in-memory SQLite)
+  test:
+    url: "sqlite+aiosqlite:///:memory:"
+
+# Security Configuration
+security:
+  secret_key: "test-secret-key-for-testing-only"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# CORS Configuration
+cors:
+  origins:
+    - "http://localhost:3000"  # Next.js frontend
+    - "http://localhost:8000"  # Backend docs
+    - "http://localhost:8001"  # Test server
+  allow_credentials: true
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+# Logging Configuration
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# API Configuration
+api:
+  prefix: "/api"
+  docs_url: "/api/docs"
+  redoc_url: "/api/redoc" 
+  openapi_url: "/api/openapi.json"
+
+# Pagination
+pagination:
+  default_limit: 10  # Smaller limit for tests
+  max_limit: 50
+
+# GTD Specific Settings
+gtd:
+  # Test user ID
+  default_user_id: "00000000-0000-0000-0000-000000000001"
+  
+  # Task settings
+  tasks:
+    auto_archive_after_days: 30  # Shorter for tests
+    reminder_before_due_hours: 1
+  
+  # Project settings
+  projects:
+    auto_complete_when_all_tasks_done: true
+    
+  # Weekly review settings
+  weekly_review:
+    default_day: 0
+    reminder_enabled: false  # Disable for tests
+
+# Feature Flags
+features:
+  authentication_enabled: false  # Disabled for tests
+  real_time_updates: false
+  email_notifications: false
+  export_import: false
+
+# External Services (disabled for tests)
+services:
+  email:
+    provider: null
+    from_address: "test@example.com"
+  
+  storage:
+    provider: "local"
+    bucket: "test-attachments"
+
+# Development Settings
+development:
+  seed_data:
+    users: 1
+    projects_per_user: 3
+    tasks_per_project: 2
+  
+  auto_reload: false  # Disabled for tests
+  show_sql_queries: false  # Keep logs clean
+
+# Docker Configuration (not used in tests)
+docker:
+  image_name: "gtd-backend-test"
+  alpine_version: "3.19"
+  python_version: "3.11"

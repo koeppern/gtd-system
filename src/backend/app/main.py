@@ -1,61 +1,81 @@
 """
-GTD Backend API - Main FastAPI Application
+Main FastAPI application for GTD backend
 """
+import logging
+import sys
+import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import logging
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.config import settings
-from app.database import engine
-from app.api import projects, tasks, dashboard
+from app.config import get_settings
+from app.database import engine, async_session_maker
+from app.api import users, fields, projects, tasks, dashboard, search, quick_add
 
 # Configure logging
 logging.basicConfig(
-    level=getattr(logging, settings.logging.level),
-    format=settings.logging.format
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
 )
+
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Manage application lifecycle
+    Application lifespan context manager
+    Handles startup and shutdown events
     """
     # Startup
-    logger.info(f"Starting {settings.app.name} v{settings.app.version}")
+    logger.info("Starting GTD Backend Application")
+    settings = get_settings()
     logger.info(f"Environment: {settings.app.environment}")
     
     # Test database connection
     try:
-        async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
         logger.info("Database connection successful")
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
+        raise
     
     yield
     
     # Shutdown
-    logger.info("Shutting down application")
+    logger.info("Shutting down GTD Backend Application")
     await engine.dispose()
 
 
-# Create FastAPI app
-app = FastAPI(
-    title=settings.app.name,
-    version=settings.app.version,
-    debug=settings.app.debug,
-    lifespan=lifespan,
-    docs_url=settings.api.docs_url,
-    redoc_url=settings.api.redoc_url,
-    openapi_url=settings.api.openapi_url
-)
-
-# Configure CORS
-if settings.cors.origins:
+# Create FastAPI application
+def create_app() -> FastAPI:
+    """
+    Create and configure FastAPI application
+    
+    Returns:
+        FastAPI: Configured application instance
+    """
+    settings = get_settings()
+    
+    app = FastAPI(
+        title=settings.app.name,
+        description="GTD (Getting Things Done) System Backend API",
+        version=settings.app.version,
+        debug=settings.app.debug,
+        lifespan=lifespan,
+        docs_url="/docs" if settings.app.debug else None,
+        redoc_url="/redoc" if settings.app.debug else None,
+    )
+    
+    # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors.origins,
@@ -63,60 +83,155 @@ if settings.cors.origins:
         allow_methods=settings.cors.allow_methods,
         allow_headers=settings.cors.allow_headers,
     )
+    
+    # Include API routers
+    app.include_router(users.router, prefix="/api")
+    app.include_router(fields.router, prefix="/api")
+    app.include_router(projects.router, prefix="/api")
+    app.include_router(tasks.router, prefix="/api")
+    app.include_router(dashboard.router, prefix="/api")
+    app.include_router(search.router, prefix="/api")
+    app.include_router(quick_add.router, prefix="/api")
+    
+    return app
+
+
+# Create app instance
+app = create_app()
+
+
+# Global exception handlers
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle request validation errors
+    """
+    logger.warning(f"Validation error for {request.url}: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "Validation Error",
+            "detail": exc.errors(),
+            "body": exc.body
+        }
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_exception_handler(request: Request, exc: SQLAlchemyError):
+    """
+    Handle database errors
+    """
+    logger.error(f"Database error for {request.url}: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Database Error",
+            "detail": "An error occurred while processing your request"
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """
+    Handle general exceptions
+    """
+    logger.error(f"Unexpected error for {request.url}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Internal Server Error",
+            "detail": "An unexpected error occurred"
+        }
+    )
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint
+    
+    Returns:
+        dict: Health status
+    """
+    settings = get_settings()
+    
+    # Test database connection
+    db_status = "healthy"
+    try:
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"unhealthy: {e}"
+        logger.error(f"Database health check failed: {e}")
+    
+    return {
+        "status": "healthy" if db_status == "healthy" else "unhealthy",
+        "app": {
+            "name": settings.app.name,
+            "version": settings.app.version,
+            "environment": settings.app.environment
+        },
+        "database": {
+            "status": db_status
+        }
+    }
 
 
 # Root endpoint
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """
+    Root endpoint
+    
+    Returns:
+        dict: API information
+    """
+    settings = get_settings()
     return {
-        "name": settings.app.name,
+        "message": "GTD Backend API",
         "version": settings.app.version,
-        "environment": settings.app.environment,
-        "docs": settings.api.docs_url
+        "docs_url": "/docs" if settings.app.debug else None,
+        "health_url": "/health"
     }
 
 
-# Health check
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    try:
-        # Check database connection
-        async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
-        
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "version": settings.app.version
-        }
-    except Exception as e:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "unhealthy",
-                "database": "disconnected",
-                "error": str(e)
-            }
-        )
+# Middleware for request logging
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """
+    Log all HTTP requests
+    """
+    start_time = time.time()
+    
+    # Log request
+    logger.info(f"{request.method} {request.url} - Started")
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Log response
+    process_time = time.time() - start_time
+    logger.info(
+        f"{request.method} {request.url} - "
+        f"Status: {response.status_code} - "
+        f"Time: {process_time:.3f}s"
+    )
+    
+    return response
 
 
-# Include routers
-# app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
-# app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
-# app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
-
-
-# Global exception handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    """Handle uncaught exceptions"""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": "Internal server error",
-            "type": type(exc).__name__
-        }
+if __name__ == "__main__":
+    import uvicorn
+    
+    settings = get_settings()
+    
+    uvicorn.run(
+        "app.main:app",
+        host=settings.app.host,
+        port=settings.app.port,
+        reload=settings.app.debug,
+        access_log=True
     )

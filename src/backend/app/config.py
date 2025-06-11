@@ -7,6 +7,10 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 from functools import lru_cache
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class DatabaseConfig(BaseModel):
@@ -103,14 +107,23 @@ class Settings(BaseModel):
     
     @property
     def database_url_asyncpg(self) -> str:
-        """Get async PostgreSQL URL"""
+        """Get async database URL"""
+        # First check environment variable for direct database URL
+        env_db_url = os.getenv("DATABASE_URL")
+        if env_db_url:
+            return env_db_url
+            
+        # For testing, use test URL or postgres URL if available
+        if self.is_testing and self.database.test.get("url"):
+            return self.database.test["url"]
+            
         # First check if direct postgres URL is provided
-        if self.database.postgres["url"]:
+        if self.database.postgres.get("url"):
             return self.database.postgres["url"]
         
         # Otherwise construct from Supabase URL
-        supabase_url = self.database.supabase["url"]
-        service_key = self.database.supabase["service_role_key"]
+        supabase_url = self.database.supabase.get("url", "")
+        service_key = self.database.supabase.get("service_role_key", "")
         
         # Override with environment variables if present
         supabase_url = os.getenv("SUPABASE_URL", supabase_url)
@@ -120,7 +133,8 @@ class Settings(BaseModel):
             project_id = supabase_url.split("//")[1].split(".")[0]
             return f"postgresql+asyncpg://postgres:{service_key}@db.{project_id}.supabase.co:5432/postgres"
         
-        raise ValueError("Database configuration not properly set")
+        # Fallback to SQLite for local development
+        return "sqlite+aiosqlite:///./gtd_dev.db"
     
     @property
     def is_testing(self) -> bool:
@@ -131,28 +145,54 @@ class Settings(BaseModel):
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance"""
-    # Determine config file path
-    config_file = os.getenv("CONFIG_FILE", "config/config.yaml")
+    # Determine config file path - use relative paths only
+    config_file = os.getenv("CONFIG_FILE", "config.yaml")
     
-    # Support both absolute and relative paths
-    if not Path(config_file).is_absolute():
-        # Look for config file relative to project root
-        project_root = Path(__file__).resolve().parent.parent.parent
-        config_path = project_root / config_file
-    else:
-        config_path = Path(config_file)
+    # Start from this file's directory (app/)
+    current_path = Path(__file__).parent
+    config_path = None
     
-    if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    # Try common relative paths from app directory
+    search_paths = [
+        # From app/ directory
+        current_path.parent.parent / "config" / config_file,  # ../../config/
+        current_path.parent / "config" / config_file,  # ../config/
+        current_path / "config" / config_file,  # ./config/
+        
+        # From backend/ directory (parent of app/)
+        current_path.parent / config_file,  # ../
+        
+        # From src/ directory 
+        current_path.parent.parent / config_file,  # ../../
+        
+        # From project root
+        current_path.parent.parent.parent / "config" / config_file,  # ../../../config/
+    ]
+    
+    # Also try relative to current working directory
+    cwd = Path.cwd()
+    search_paths.extend([
+        cwd / "config" / config_file,
+        cwd / config_file,
+        cwd / ".." / "config" / config_file,
+        cwd / ".." / ".." / "config" / config_file,
+    ])
+    
+    # Find the first existing path
+    for path in search_paths:
+        if path.exists():
+            config_path = path
+            break
+    
+    if not config_path:
+        searched_paths = "\n".join(str(p) for p in search_paths)
+        raise FileNotFoundError(f"Configuration file '{config_file}' not found. Searched paths:\n{searched_paths}")
     
     return Settings.from_yaml(config_path)
 
 
-# Create settings instance
-settings = get_settings()
-
-# Project paths
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Project paths (using relative paths)
+BASE_DIR = Path(__file__).parent.parent  # Don't resolve immediately
 APP_DIR = BASE_DIR / "app"
-TESTS_DIR = BASE_DIR / "tests"
+TESTS_DIR = BASE_DIR / "tests" 
 CONFIG_DIR = BASE_DIR.parent / "config"

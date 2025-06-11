@@ -5,26 +5,36 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
-from app.config import settings
+from app.config import get_settings
 
-# Create async engine
-engine = create_async_engine(
-    settings.database_url_asyncpg,
-    echo=settings.app.debug,
-    future=True,
-    pool_pre_ping=True,
-    # Use NullPool for serverless environments
-    poolclass=NullPool if settings.app.environment == "production" else None,
-)
+# Initialize engine and session factory on import
+def _init_database():
+    """Initialize database engine and session factory"""
+    settings = get_settings()
+    
+    # Create async engine
+    engine = create_async_engine(
+        settings.database_url_asyncpg,
+        echo=settings.app.debug,
+        future=True,
+        pool_pre_ping=True,
+        # Use NullPool for serverless environments
+        poolclass=NullPool if settings.app.environment == "production" else None,
+    )
+    
+    # Create async session factory
+    async_session_maker = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+    
+    return engine, async_session_maker
 
-# Create async session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+# Initialize database components
+engine, async_session_maker = _init_database()
 
 # Import models to ensure they are registered with Base
 from app.models.base import Base
@@ -36,7 +46,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency function that yields db sessions
     """
-    async with AsyncSessionLocal() as session:
+    async with async_session_maker() as session:
         try:
             yield session
             await session.commit()

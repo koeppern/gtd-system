@@ -114,7 +114,8 @@ gtd/
 **WICHTIG: Immer das virtuelle Environment verwenden!**
 
 ```bash
-# Virtual Environment erstellen (einmalig)
+# Virtual Environment erstellen (einmalig, falls nicht vorhanden)
+cd /mnt/c/python/gtd
 python3 -m venv .venv
 
 # Virtual Environment aktivieren (bei jeder Session)
@@ -123,6 +124,7 @@ source .venv/bin/activate
 # Dependencies installieren
 pip install --upgrade pip
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
 # Environment Variables setzen (.env Datei)
 SUPABASE_URL=https://your-project.supabase.co
@@ -133,12 +135,13 @@ DEFAULT_USER_ID=your-user-uuid
 ## Entwicklung mit Virtual Environment
 
 ```bash
-# Vor jeder Entwicklung aktivieren:
+# Vor jeder Entwicklung aktivieren (vom Projekt-Root):
+cd /mnt/c/python/gtd
 source .venv/bin/activate
 
 # Python-Befehle dann wie gewohnt:
 python src/etl_projects.py
-python -m pytest tests/
+cd src/backend && python -m pytest tests/
 
 # Deaktivieren nach der Arbeit:
 deactivate
@@ -147,7 +150,8 @@ deactivate
 ## ETL Ausführung
 
 ```bash
-# WICHTIG: Virtual Environment aktivieren
+# WICHTIG: Virtual Environment aktivieren (vom Projekt-Root)
+cd /mnt/c/python/gtd
 source .venv/bin/activate
 
 # GTD Projects importieren
@@ -156,6 +160,6 @@ python src/etl_projects.py --force
 # GTD Tasks importieren
 python src/etl_tasks.py --force
 
-# Tests ausführen
-python -m pytest tests/ -v
+# Backend Tests ausführen
+cd src/backend && python -m pytest tests/ -v
 ```

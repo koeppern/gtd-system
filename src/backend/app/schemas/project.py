@@ -223,3 +223,38 @@ class ProjectStats(BaseSchema):
     completion_percentage: float = Field(0.0, description="Completion percentage")
     avg_task_completion_days: Optional[float] = Field(None, description="Average days to complete tasks")
     project_duration_days: Optional[int] = Field(None, description="Project duration in days")
+
+
+class ProjectWithStats(ProjectResponse):
+    """Project response with detailed statistics"""
+    
+    # Detailed task breakdown
+    tasks_today: int = Field(0, description="Tasks scheduled for today")
+    tasks_this_week: int = Field(0, description="Tasks scheduled for this week")
+    tasks_reading: int = Field(0, description="Reading tasks")
+    tasks_waiting: int = Field(0, description="Tasks waiting for something")
+    tasks_postponed: int = Field(0, description="Postponed tasks")
+    
+    # Priority breakdown
+    high_priority_tasks: int = Field(0, description="High priority tasks (1-2)")
+    medium_priority_tasks: int = Field(0, description="Medium priority tasks (3)")
+    low_priority_tasks: int = Field(0, description="Low priority tasks (4-5)")
+    
+    # Time tracking
+    avg_task_completion_days: Optional[float] = Field(None, description="Average days to complete tasks")
+    project_duration_days: Optional[int] = Field(None, description="Project duration in days")
+    
+    # Activity metrics
+    last_task_created: Optional[datetime] = Field(None, description="Last task creation")
+    last_task_completed: Optional[datetime] = Field(None, description="Last task completion")
+    
+    @classmethod
+    def from_model_with_stats(cls, project_model, stats_data: dict) -> "ProjectWithStats":
+        """Create response with stats from SQLAlchemy model and stats dict"""
+        # Start with basic project data
+        base_data = ProjectResponse.from_model(project_model).__dict__
+        
+        # Add statistics
+        base_data.update(stats_data)
+        
+        return cls(**base_data)

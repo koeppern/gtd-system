@@ -143,6 +143,33 @@ class UserProfile(UserResponse):
     completion_streak: int = Field(0, description="Current completion streak in days")
 
 
+class UserStats(BaseSchema):
+    """User statistics schema"""
+    
+    # Project statistics
+    total_projects: int = Field(0, description="Total number of projects")
+    active_projects: int = Field(0, description="Number of active projects")
+    completed_projects: int = Field(0, description="Number of completed projects")
+    
+    # Task statistics  
+    total_tasks: int = Field(0, description="Total number of tasks")
+    pending_tasks: int = Field(0, description="Number of pending tasks")
+    completed_tasks: int = Field(0, description="Number of completed tasks")
+    
+    # Weekly planning
+    tasks_today: int = Field(0, description="Tasks due today")
+    tasks_this_week: int = Field(0, description="Tasks due this week")
+    projects_this_week: int = Field(0, description="Projects to work on this week")
+    
+    # Productivity metrics
+    completion_rate: float = Field(0.0, description="Task completion rate (0-1)")
+    weekly_completion_rate: float = Field(0.0, description="Weekly task completion rate")
+    
+    # Activity tracking
+    days_since_last_login: Optional[int] = Field(None, description="Days since last login")
+    completion_streak: int = Field(0, description="Current completion streak in days")
+
+
 class UserSettings(BaseSchema):
     """User settings schema"""
     
