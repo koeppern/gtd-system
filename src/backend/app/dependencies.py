@@ -22,12 +22,21 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     
     Yields:
         AsyncSession: Database session
+        
+    Raises:
+        HTTPException: If database is not available
     """
-    async with async_session_maker() as session:
-        try:
+    try:
+        async with async_session_maker() as session:
+            # Test the connection before yielding
+            from sqlalchemy import text
+            await session.execute(text("SELECT 1"))
             yield session
-        finally:
-            await session.close()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database service unavailable: {str(e)}"
+        )
 
 
 async def get_current_user(
