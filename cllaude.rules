@@ -1,0 +1,5 @@
+- All source code is withnin folder `src` and subfolders in there
+- Config data like settings, variables, prompts are stored in (yaml) files in folder `config`
+- Never code values hard into source code file but rather load them from separate config file or even from env vars (mybe youÄll need to load .env first)
+- git commit after each successfull claude code task was finished
+- always create sensible tests and run them

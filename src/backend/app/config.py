@@ -133,8 +133,8 @@ class Settings(BaseModel):
             project_id = supabase_url.split("//")[1].split(".")[0]
             return f"postgresql+asyncpg://postgres:{service_key}@db.{project_id}.supabase.co:5432/postgres"
         
-        # Fallback to SQLite for local development
-        return "sqlite+aiosqlite:///./gtd_dev.db"
+        # No database URL available
+        raise ValueError("Database configuration incomplete: Missing Supabase URL or service role key")
     
     @property
     def is_testing(self) -> bool:

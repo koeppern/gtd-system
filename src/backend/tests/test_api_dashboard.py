@@ -8,7 +8,8 @@ from fastapi.testclient import TestClient
 class TestDashboardAPI:
     """Test Dashboard API endpoints."""
     
-    def test_get_dashboard_overview(self, client: TestClient, test_user, multiple_projects, multiple_tasks, completed_items, helpers):
+    @pytest.mark.asyncio
+    async def test_get_dashboard_overview(self, client: TestClient, test_user, multiple_projects, multiple_tasks, completed_items, helpers):
         """Test getting comprehensive dashboard overview."""
         response = client.get("/api/dashboard/overview")
         data = helpers.assert_response_success(response)

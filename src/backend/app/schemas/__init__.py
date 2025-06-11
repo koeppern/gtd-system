@@ -9,6 +9,13 @@ from .common import (
     PaginatedResponse,
     ErrorResponse,
     SuccessResponse,
+    QuickAddRequest,
+    SearchRequest,
+    SearchResult,
+    SearchResponse,
+    DashboardStats,
+    CompletionRequest,
+    TEST_USER_ID,
 )
 from .user import (
     UserBase,
@@ -52,6 +59,13 @@ __all__ = [
     "PaginatedResponse",
     "ErrorResponse",
     "SuccessResponse",
+    "QuickAddRequest",
+    "SearchRequest",
+    "SearchResult",
+    "SearchResponse",
+    "DashboardStats",
+    "CompletionRequest",
+    "TEST_USER_ID",
     # User
     "UserBase",
     "UserCreate",
