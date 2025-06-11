@@ -88,17 +88,8 @@ exit(0 if result else 1)
 " 2>/dev/null; then
         echo -e "${GREEN}✅ Database connection successful${NC}"
     else
-        echo -e "${YELLOW}⚠️  Supabase connection failed${NC}"
-        echo -e "${BLUE}🔄 Switching to SQLite fallback for development...${NC}"
-        
-        # Backup current .env and use SQLite fallback
-        if [ -f ".env" ]; then
-            cp .env .env.supabase.backup
-        fi
-        cp .env.development .env
-        
-        echo -e "${GREEN}✅ Using SQLite database for development${NC}"
-        echo -e "${YELLOW}💡 To restore Supabase: mv .env.supabase.backup .env${NC}"
+        echo -e "${YELLOW}⚠️  Supabase connection failed - server will start but database features may be limited${NC}"
+        echo -e "${BLUE}💡 Check your internet connection and Supabase credentials${NC}"
     fi
 else
     echo -e "${YELLOW}⚠️  Database configuration issue, but starting server anyway...${NC}"
