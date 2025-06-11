@@ -1,0 +1,80 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gtd-backend-ingress
+  namespace: gtd-system
+  labels:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Nginx Ingress Controller annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    
+    # Certificate management (cert-manager)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # Traefik annotations (alternative to nginx)
+    # traefik.ingress.kubernetes.io/router.middlewares: gtd-system-gtd-auth@kubernetescrd
+    
+spec:
+  ingressClassName: nginx  # or traefik, depending on your ingress controller
+  tls:
+  - hosts:
+    - gtd-api.your-domain.com  # Replace with your domain
+    secretName: gtd-backend-tls
+  rules:
+  - host: gtd-api.your-domain.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gtd-backend-service
+            port:
+              number: 80
+---
+# Alternative Ingress for development (no TLS)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gtd-backend-ingress-dev
+  namespace: gtd-system
+  labels:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: ingress-dev
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gtd-api.local  # Add to /etc/hosts for local development
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gtd-backend-service
+            port:
+              number: 80

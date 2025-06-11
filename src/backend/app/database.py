@@ -9,18 +9,31 @@ from app.config import get_settings
 
 # Initialize engine and session factory on import
 def _init_database():
-    """Initialize database engine and session factory"""
+    """Initialize database engine and session factory with fallback support"""
     settings = get_settings()
+    database_url = settings.database_url_asyncpg
+    
+    # For development, provide more resilient connection handling
+    engine_kwargs = {
+        "echo": settings.app.debug,
+        "future": True,
+        "pool_pre_ping": True,
+    }
+    
+    # Use NullPool for serverless environments or when connection might be unreliable
+    if settings.app.environment == "production" or "postgresql" in database_url:
+        engine_kwargs["poolclass"] = NullPool
+    
+    # Add connection timeout and retry settings for PostgreSQL
+    if "postgresql" in database_url:
+        engine_kwargs["connect_args"] = {
+            "server_settings": {
+                "application_name": "gtd_backend",
+            }
+        }
     
     # Create async engine
-    engine = create_async_engine(
-        settings.database_url_asyncpg,
-        echo=settings.app.debug,
-        future=True,
-        pool_pre_ping=True,
-        # Use NullPool for serverless environments
-        poolclass=NullPool if settings.app.environment == "production" else None,
-    )
+    engine = create_async_engine(database_url, **engine_kwargs)
     
     # Create async session factory
     async_session_maker = async_sessionmaker(

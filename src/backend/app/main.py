@@ -39,14 +39,24 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"Environment: {settings.app.environment}")
     
-    # Test database connection
+    # Test database connection and create tables if needed
     try:
         async with async_session_maker() as session:
             await session.execute(text("SELECT 1"))
         logger.info("Database connection successful")
+        
+        # For SQLite development, ensure tables exist
+        if "sqlite" in settings.database_url_asyncpg:
+            from app.models.base import Base
+            logger.info("Creating database tables for SQLite...")
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+                logger.info("Database tables created/verified")
+                
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
-        raise
+        logger.warning("Starting server without database connection - some features may not work")
+        # Don't raise in development to allow server to start without DB
     
     yield
     

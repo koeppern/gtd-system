@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gtd-backend-service
+  namespace: gtd-system
+  labels:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: service
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: api
+---
+# LoadBalancer service (alternative to Ingress)
+apiVersion: v1
+kind: Service
+metadata:
+  name: gtd-backend-loadbalancer
+  namespace: gtd-system
+  labels:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: loadbalancer
+  annotations:
+    # Cloud provider specific annotations
+    # For AWS:
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # For GCP:
+    # cloud.google.com/load-balancer-type: "External"
+    # For Azure:
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: api

@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gtd-backend-network-policy
+  namespace: gtd-system
+  labels:
+    app.kubernetes.io/name: gtd-backend
+    app.kubernetes.io/component: networkpolicy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gtd-backend
+      app.kubernetes.io/component: api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow ingress from same namespace (for service mesh)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: gtd-system
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  # Allow egress to DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow egress to external databases (adjust as needed)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 443   # HTTPS (for Supabase, etc.)
+    - protocol: TCP
+      port: 80    # HTTP

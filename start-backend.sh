@@ -59,9 +59,17 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Test database connection
+# Test database connection and suggest fallback if needed
 echo -e "${BLUE}🔌 Testing database connection...${NC}"
 if python3 -c "
+from app.config import get_settings
+settings = get_settings()
+print(f'Database URL: {settings.database_url_asyncpg[:50]}...')
+" 2>/dev/null; then
+    echo -e "${BLUE}📊 Database configuration loaded${NC}"
+    
+    # Test actual connection
+    if python3 -c "
 from app.config import get_settings
 from app.database import async_session_maker
 import asyncio
@@ -73,15 +81,27 @@ async def test_connection():
             result = await session.execute(text('SELECT 1'))
             return result.scalar() == 1
     except Exception as e:
-        print(f'Connection error: {e}')
         return False
 
 result = asyncio.run(test_connection())
 exit(0 if result else 1)
 " 2>/dev/null; then
-    echo -e "${GREEN}✅ Database connection successful${NC}"
+        echo -e "${GREEN}✅ Database connection successful${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Supabase connection failed${NC}"
+        echo -e "${BLUE}🔄 Switching to SQLite fallback for development...${NC}"
+        
+        # Backup current .env and use SQLite fallback
+        if [ -f ".env" ]; then
+            cp .env .env.supabase.backup
+        fi
+        cp .env.development .env
+        
+        echo -e "${GREEN}✅ Using SQLite database for development${NC}"
+        echo -e "${YELLOW}💡 To restore Supabase: mv .env.supabase.backup .env${NC}"
+    fi
 else
-    echo -e "${YELLOW}⚠️  Database connection failed, but starting server anyway...${NC}"
+    echo -e "${YELLOW}⚠️  Database configuration issue, but starting server anyway...${NC}"
 fi
 
 # Start the server

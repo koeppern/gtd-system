@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gtd-system
+  labels:
+    app.kubernetes.io/name: gtd
+    app.kubernetes.io/component: namespace

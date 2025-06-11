@@ -1,0 +1,62 @@
+app:
+  name: "GTD Backend API (Test)"
+  version: "1.0.0"
+  environment: "testing"
+  debug: true
+  host: "127.0.0.1"
+  port: 8000
+
+server:
+  host: "127.0.0.1"
+  port: 8000
+
+database:
+  supabase:
+    url: ""
+    anon_key: ""
+    service_role_key: ""
+  postgres:
+    url: "sqlite+aiosqlite:///:memory:"
+  test:
+    url: "sqlite+aiosqlite:///:memory:"
+
+security:
+  secret_key: "test-secret-key-not-for-production-12345678901234567890"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+cors:
+  origins: ["http://localhost:3000", "http://127.0.0.1:3000"]
+  allow_credentials: true
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+api:
+  prefix: "/api"
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  openapi_url: "/openapi.json"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+pagination:
+  default_limit: 50
+  max_limit: 1000
+
+gtd:
+  default_user_id: "00000000-0000-0000-0000-000000000001"
+  tasks:
+    priorities: [1, 2, 3, 4, 5]
+    default_priority: 3
+  projects:
+    auto_create_fields: true
+  weekly_review:
+    enabled: true
+
+features:
+  authentication_enabled: false
+  real_time_updates: false
+  email_notifications: false
+  export_import: true

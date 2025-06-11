@@ -1,0 +1,62 @@
+app:
+  name: "GTD Backend API"
+  version: "1.0.0"
+  environment: "production"
+  debug: false
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+database:
+  supabase:
+    url: ""  # Set via environment variable SUPABASE_URL
+    anon_key: ""
+    service_role_key: ""  # Set via environment variable SUPABASE_SERVICE_ROLE_KEY
+  postgres:
+    url: ""  # Set via environment variable POSTGRES_URL
+  test:
+    url: "sqlite+aiosqlite:///:memory:"
+
+security:
+  secret_key: ""  # Set via environment variable SECRET_KEY
+  algorithm: "HS256"
+  access_token_expire_minutes: 60
+
+cors:
+  origins:
+    - "https://your-frontend-domain.com"
+    - "https://gtd.your-domain.com"
+  allow_credentials: true
+  allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  allow_headers: ["*"]
+
+api:
+  prefix: "/api"
+  docs_url: null  # Disabled in production
+  redoc_url: null  # Disabled in production
+  openapi_url: null  # Disabled in production
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+pagination:
+  default_limit: 50
+  max_limit: 1000
+
+gtd:
+  default_user_id: "00000000-0000-0000-0000-000000000001"
+  tasks:
+    priorities: [1, 2, 3, 4, 5]
+    default_priority: 3
+  projects:
+    auto_create_fields: true
+  weekly_review:
+    enabled: true
+
+features:
+  authentication_enabled: true
+  real_time_updates: false
+  email_notifications: false
+  export_import: true

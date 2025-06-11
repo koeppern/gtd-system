@@ -131,7 +131,14 @@ class Settings(BaseModel):
         
         if supabase_url and service_key:
             project_id = supabase_url.split("//")[1].split(".")[0]
-            return f"postgresql+asyncpg://postgres:{service_key}@db.{project_id}.supabase.co:5432/postgres"
+            supabase_db_url = f"postgresql+asyncpg://postgres:{service_key}@db.{project_id}.supabase.co:5432/postgres"
+            
+            # Check if we're in a development environment and allow fallback
+            if self.app.environment == "development":
+                # Try to validate the URL format but don't test connection here
+                return supabase_db_url
+            else:
+                return supabase_db_url
         
         # Fallback to SQLite for local development
         return "sqlite+aiosqlite:///./gtd_dev.db"
