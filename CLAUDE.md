@@ -1,8 +1,31 @@
 # Claude Code Rules für GTD ETL Project
 
+## Datenbank-Regeln
+
+**WICHTIG: Diese Regeln sind absolut verpflichtend!**
+
+1. **Niemals SQLite verwenden** - Ausschließlich Supabase (PostgreSQL) als Datenbank
+2. **Keine SQLite-Mocks in Tests** - Supabase darf NIEMALS mit SQLite emuliert oder gemockt werden
+3. **Immer echte Supabase-Verbindung** - Auch in Tests wird die echte Supabase-Datenbank verwendet
+
+## Code-Organisation
+
+1. **Source Code** - Aller Quellcode befindet sich ausschließlich im Ordner `src/` und dessen Unterordnern
+2. **Konfiguration** - Alle Einstellungen, Variablen und Prompts werden in YAML-Dateien im Ordner `config/` gespeichert
+3. **Keine Hardcoded Values** - Niemals Werte direkt im Quellcode definieren, sondern immer aus separaten Config-Dateien oder Environment Variables laden
+4. **Environment Variables** - Bei Bedarf zuerst `.env` Datei laden
+
+## Python-Entwicklung
+
+**WICHTIG: Für Python-Entwicklung IMMER das virtuelle Environment (.venv) verwenden!**
+
+1. **Virtual Environment ist Pflicht** - Niemals Python-Pakete global installieren
+2. **Tests erstellen** - Nach jeder Implementierung sinnvolle Tests schreiben
+3. **Tests ausführen** - Alle Tests müssen vor einem Commit erfolgreich durchlaufen
+
 ## Automatische Git-Commits
 
-Nach jeder abgeschlossenen Aufgabe oder Implementierung soll automatisch ein Git-Commit durchgeführt werden.
+**WICHTIG: Nach jeder erfolgreich abgeschlossenen Claude Code Aufgabe wird automatisch ein Git-Commit durchgeführt.**
 
 ### Commit-Regeln:
 
@@ -90,9 +113,11 @@ python3 -m pytest tests/ -v
 
 ```
 gtd/
-├── src/                    # ETL Pipeline Code
+├── src/                    # ALLER Source Code (Pflicht!)
 │   ├── etl_projects.py    # GTD Projects ETL
 │   └── etl_tasks.py       # GTD Tasks ETL
+├── config/                # Konfigurationsdateien (YAML)
+│   └── *.yaml            # Alle Settings, Variablen, Prompts
 ├── tests/                 # Unit Tests
 │   ├── test_etl_projects.py
 │   └── test_etl_tasks.py
@@ -104,6 +129,7 @@ gtd/
 │   └── gtd_projects_from_notion.md
 ├── data/                  # Notion Export Data
 │   └── from_notion/
+├── .venv/                 # Virtual Environment (Pflicht für Python!)
 ├── requirements.txt       # Python Dependencies
 ├── .env                   # Environment Variables (nicht committen)
 └── CLAUDE.md             # Diese Datei
