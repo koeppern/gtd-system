@@ -20,11 +20,7 @@ export const metadata: Metadata = {
   description: 'Modern productivity app based on David Allen\'s Getting Things Done methodology',
   keywords: ['productivity', 'gtd', 'getting things done', 'task management', 'project management'],
   authors: [{ name: 'GTD Team' }],
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-  ],
+  metadataBase: new URL('http://localhost:3000'),
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
@@ -47,6 +43,15 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export default function RootLayout({
