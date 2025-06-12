@@ -10,7 +10,26 @@ from functools import lru_cache
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+# Try to find .env in project root
+current_dir = Path(__file__).parent
+for i in range(5):  # Search up to 5 levels up
+    env_path = current_dir / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+        break
+    current_dir = current_dir.parent
+else:
+    # Fallback: try common paths
+    fallback_paths = [
+        Path("/mnt/c/python/gtd/.env"),
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+        Path.cwd().parent.parent / ".env",
+    ]
+    for path in fallback_paths:
+        if path.exists():
+            load_dotenv(path)
+            break
 
 
 class DatabaseConfig(BaseModel):
@@ -131,8 +150,13 @@ class Settings(BaseModel):
         
         if supabase_url and service_key:
             project_id = supabase_url.split("//")[1].split(".")[0]
-            # Use direct database connection (same as when migration worked)
-            return f"postgresql+asyncpg://postgres:{service_key}@db.{project_id}.supabase.co:5432/postgres"
+            # Check if we have a custom DATABASE_URL in environment
+            custom_url = os.getenv("DATABASE_URL")
+            if custom_url:
+                return custom_url
+            # Use Supavisor session mode pooler for IPv4 support
+            # Session mode is on port 5432 and supports persistent connections
+            return f"postgresql+asyncpg://postgres.{project_id}:{service_key}@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
         
         # No database URL available
         raise ValueError("Database configuration incomplete: Missing Supabase URL or service role key")

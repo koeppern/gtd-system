@@ -14,13 +14,19 @@ from app.models.project import Project
 from app.models.task import Task
 
 
+# Skip Supabase tests if IPv6 is not available
+skip_supabase = os.getenv("SKIP_SUPABASE_TESTS") == "1"
+
+
 class TestSupabaseConnection:
     """Test basic Supabase database connectivity"""
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
-    async def test_database_connection(self):
+    async def test_database_connection(self, db_session):
         """Test that we can connect to the database"""
-        async with async_session_maker() as session:
+        async for session in db_session:
             # Test basic connection with a simple query
             result = await session.execute(text("SELECT 1"))
             assert result.scalar() == 1
@@ -33,7 +39,9 @@ class TestSupabaseConnection:
                 version = result.scalar()
                 assert "PostgreSQL" in version
                 print(f"Connected to: {version}")
+            break  # Only need one iteration for this test
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_supabase_tables_exist(self):
         """Test that all required tables exist"""
@@ -65,6 +73,7 @@ class TestSupabaseConnection:
             expected_tables = ['gtd_fields', 'gtd_projects', 'gtd_tasks', 'gtd_users']
             assert set(tables) == set(expected_tables), f"Missing tables. Found: {tables}"
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_default_user_exists(self):
         """Test that the default user exists in the database"""
@@ -81,6 +90,7 @@ class TestSupabaseConnection:
 class TestSupabaseSpecific:
     """Test Supabase-specific functionality"""
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_supabase_connection_direct(self):
         """Test direct Supabase connection bypassing test config"""
@@ -105,6 +115,7 @@ class TestSupabaseSpecific:
         finally:
             await engine.dispose()
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_supabase_tables_exist_direct(self):
         """Test that tables exist in Supabase (direct connection)"""
@@ -140,6 +151,7 @@ class TestSupabaseSpecific:
         finally:
             await engine.dispose()
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_supabase_default_user_exists_direct(self):
         """Test that default user exists in Supabase (direct connection)"""
@@ -171,6 +183,7 @@ class TestSupabaseSpecific:
         finally:
             await engine.dispose()
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_supabase_views_exist(self):
         """Test that database views exist in Supabase"""
@@ -205,6 +218,7 @@ class TestSupabaseSpecific:
             for view in expected_views:
                 assert view in views, f"View '{view}' not found in database"
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_postgresql_features_if_available(self):
         """Test PostgreSQL-specific features if using PostgreSQL"""
@@ -226,6 +240,7 @@ class TestSupabaseSpecific:
             # Test array support  
             await db.execute(text("SELECT ARRAY[1,2,3]"))
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_database_extensions_if_postgresql(self):
         """Test that required PostgreSQL extensions are available"""
@@ -246,6 +261,7 @@ class TestSupabaseSpecific:
             # Extension might not be installed in all environments
             assert isinstance(has_uuid_extension, bool)
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_database_performance_postgresql(self):
         """Test PostgreSQL performance characteristics"""
@@ -271,6 +287,7 @@ class TestSupabaseSpecific:
         # Multiple connections should be reasonably fast
         assert total_time < 2.0  # Less than 2 seconds for 5 connections
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_transaction_isolation(self):
         """Test transaction isolation in PostgreSQL"""
@@ -332,6 +349,7 @@ class TestDatabaseConfiguration:
 class TestSupabaseCRUD:
     """Test CRUD operations with Supabase"""
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_user_crud_operations(self):
         """Test basic CRUD operations on User model"""
@@ -381,6 +399,7 @@ class TestSupabaseCRUD:
                 await session.rollback()
                 raise e
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_foreign_key_constraints(self):
         """Test that foreign key constraints work properly"""
@@ -412,6 +431,7 @@ class TestSupabaseCRUD:
 class TestDataMigration:
     """Test data migration and schema compatibility"""
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_schema_version_compatibility(self):
         """Test that current schema is compatible"""
@@ -438,6 +458,7 @@ class TestDataMigration:
                 # For SQLite, just check if we can query tables
                 await db.execute(text("SELECT 1 FROM gtd_users LIMIT 1"))
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_table_structure_consistency(self):
         """Test that all tables have consistent structure"""
@@ -461,6 +482,7 @@ class TestDataMigration:
 class TestConnectionResilience:
     """Test database connection resilience and error handling"""
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_connection_pool_recovery(self):
         """Test that connection pool can recover from errors"""
@@ -476,6 +498,7 @@ class TestConnectionResilience:
             result = await session.execute(text("SELECT 2"))
             assert result.scalar() == 2
     
+    @pytest.mark.skipif(skip_supabase, reason="IPv6 not available in WSL")
     @pytest.mark.asyncio
     async def test_concurrent_connections(self):
         """Test multiple concurrent database connections"""

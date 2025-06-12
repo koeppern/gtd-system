@@ -45,6 +45,8 @@ def _init_database():
             "ssl": "require",  # Enable SSL for Supabase pooler
             "command_timeout": 10,
             "timeout": 30,
+            # Force IPv4 for WSL compatibility
+            "ssl_context": None,  # Let asyncpg handle SSL context
         }
     
     # Create async engine
