@@ -7,29 +7,16 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 from functools import lru_cache
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-# Load environment variables from .env file
-# Try to find .env in project root
-current_dir = Path(__file__).parent
-for i in range(5):  # Search up to 5 levels up
-    env_path = current_dir / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
-        break
-    current_dir = current_dir.parent
+# Load environment variables from .env file using find_dotenv()
+# This automatically searches up the directory tree to find the .env file
+dotenv_path = find_dotenv()
+if dotenv_path:
+    load_dotenv(dotenv_path)
+    print(f"Loaded .env from: {dotenv_path}")
 else:
-    # Fallback: try common paths
-    fallback_paths = [
-        Path("/mnt/c/python/gtd/.env"),
-        Path.cwd() / ".env",
-        Path.cwd().parent / ".env",
-        Path.cwd().parent.parent / ".env",
-    ]
-    for path in fallback_paths:
-        if path.exists():
-            load_dotenv(path)
-            break
+    print("Warning: No .env file found")
 
 
 class DatabaseConfig(BaseModel):
