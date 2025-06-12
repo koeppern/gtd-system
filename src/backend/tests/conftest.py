@@ -33,15 +33,22 @@ from app.schemas.project import ProjectCreate
 from app.schemas.task import TaskCreate
 from app.schemas.common import TEST_USER_ID
 
-# Test database URL (in-memory SQLite for fast tests)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Import settings to get database URL
+from app.config import get_settings
 
-# Create test engine
+# Get test database URL from configuration
+settings = get_settings()
+TEST_DATABASE_URL = settings.database_url_asyncpg
+
+# Create test engine with Supabase connection
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
-    poolclass=StaticPool,
-    connect_args={"check_same_thread": False},
+    connect_args={
+        "ssl": "require",
+        "command_timeout": 10,
+        "timeout": 30,
+    },
 )
 
 # Create test session maker
@@ -63,49 +70,40 @@ def event_loop() -> Generator:
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a test database session."""
-    # Create tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # For Supabase, tables already exist, so we don't create/drop them
+    # Just create a session and clean up test data after each test
     
-    # Create session
     async with TestSessionLocal() as session:
+        # Store initial state for cleanup
+        initial_user_count = await session.execute(text("SELECT COUNT(*) FROM users"))
+        initial_count = initial_user_count.scalar()
+        
         yield session
-    
-    # Drop tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        
+        # Clean up test data (but keep existing data)
+        # Delete only test data by filtering on test user ID
+        await session.execute(text("DELETE FROM tasks WHERE user_id = :user_id"), {"user_id": TEST_USER_ID})
+        await session.execute(text("DELETE FROM projects WHERE user_id = :user_id"), {"user_id": TEST_USER_ID})
+        await session.execute(text("DELETE FROM fields WHERE created_by = :user_id"), {"user_id": TEST_USER_ID})
+        # Only delete test user if it was created during this test
+        current_user_count = await session.execute(text("SELECT COUNT(*) FROM users"))
+        if current_user_count.scalar() > initial_count:
+            await session.execute(text("DELETE FROM users WHERE id = :user_id"), {"user_id": TEST_USER_ID})
+        await session.commit()
 
 
 @pytest.fixture(scope="function")  
 def client() -> TestClient:
-    """Create a test client with isolated test database."""
-    import asyncio
-    
-    # Since the app uses in-memory SQLite for tests, we need to create tables
+    """Create a test client with Supabase database."""
+    # For Supabase, tables already exist, so we don't need to create them
     # The app will use the test database because CONFIG_FILE is set to test_config.yaml
-    
-    # Get a reference to the app's engine and create tables
-    from app.database import engine as app_engine
-    from app.models.base import Base
-    
-    async def create_tables():
-        async with app_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    
-    # Create tables in the test database
-    asyncio.run(create_tables())
     
     # Create test client
     client = TestClient(app)
     
     yield client
     
-    # Clean up by dropping tables
-    async def drop_tables():
-        async with app_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-    
-    asyncio.run(drop_tables())
+    # No cleanup needed for Supabase tables
 
 
 @pytest.fixture
