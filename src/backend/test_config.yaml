@@ -23,9 +23,9 @@ database:
   postgres:
     url: "postgresql+asyncpg://postgres:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZmtyaXRuZm93dXlsb2JicHF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTQ4ODg1NywiZXhwIjoyMDY1MDY0ODU3fQ.5lxQORHj_JlVj6pSQj3inXUORZbRRXa1DVyatd_lRMQ@db.jgfkritnfowuylobbpqu.supabase.co:5432/postgres"
   
-  # Test database (use Supabase)
+  # Test database (use Supabase with IPv4 pooler)
   test:
-    url: "postgresql+asyncpg://postgres:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZmtyaXRuZm93dXlsb2JicHF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTQ4ODg1NywiZXhwIjoyMDY1MDY0ODU3fQ.5lxQORHj_JlVj6pSQj3inXUORZbRRXa1DVyatd_lRMQ@db.jgfkritnfowuylobbpqu.supabase.co:5432/postgres"
+    url: "postgresql+asyncpg://postgres.jgfkritnfowuylobbpqu:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZmtyaXRuZm93dXlsb2JicHF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTQ4ODg1NywiZXhwIjoyMDY1MDY0ODU3fQ.5lxQORHj_JlVj6pSQj3inXUORZbRRXa1DVyatd_lRMQ@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
 
 # Security Configuration
 security:

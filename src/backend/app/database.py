@@ -29,24 +29,19 @@ def _init_database():
         # Extract project ID for server settings if using pooler
         server_settings = {"application_name": "gtd_backend"}
         if "pooler.supabase.com" in database_url:
-            # For pooler connections, we need to specify the project
-            from urllib.parse import urlparse, parse_qs
+            # For pooler connections, extract project reference from username
+            from urllib.parse import urlparse
             parsed = urlparse(database_url)
-            if parsed.query:
-                query_params = parse_qs(parsed.query)
-                if "options" in query_params:
-                    options = query_params["options"][0]
-                    if "project=" in options:
-                        project_id = options.split("project=")[1]
-                        server_settings["options"] = f"-c search_path=public"
+            if parsed.username and "." in parsed.username:
+                # Username format: postgres.jgfkritnfowuylobbpqu
+                project_ref = parsed.username.split(".")[1]
+                server_settings["options"] = f"-c search_path=public"
                         
         engine_kwargs["connect_args"] = {
             "server_settings": server_settings,
             "ssl": "require",  # Enable SSL for Supabase pooler
             "command_timeout": 10,
             "timeout": 30,
-            # Force IPv4 for WSL compatibility
-            "ssl_context": None,  # Let asyncpg handle SSL context
         }
     
     # Create async engine
