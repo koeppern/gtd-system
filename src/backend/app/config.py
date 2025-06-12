@@ -131,7 +131,9 @@ class Settings(BaseModel):
         
         if supabase_url and service_key:
             project_id = supabase_url.split("//")[1].split(".")[0]
-            return f"postgresql+asyncpg://postgres:{service_key}@db.{project_id}.supabase.co:5432/postgres"
+            # Use pooler endpoint for better connectivity (IPv4 support)
+            # Format: postgres.[project-ref]:[password]@[region].pooler.supabase.com:6543/postgres
+            return f"postgresql+asyncpg://postgres.{project_id}:{service_key}@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
         
         # No database URL available
         raise ValueError("Database configuration incomplete: Missing Supabase URL or service role key")

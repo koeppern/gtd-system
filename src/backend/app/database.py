@@ -29,7 +29,10 @@ def _init_database():
         engine_kwargs["connect_args"] = {
             "server_settings": {
                 "application_name": "gtd_backend",
-            }
+            },
+            "ssl": "require",  # Enable SSL for Supabase pooler
+            "command_timeout": 10,
+            "timeout": 30,
         }
     
     # Create async engine

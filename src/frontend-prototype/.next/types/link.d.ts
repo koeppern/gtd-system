@@ -43,8 +43,8 @@ declare namespace __next_route_internal_types__ {
 }
 
 declare module 'next' {
-  export { default } from 'next/types/index.js'
-  export * from 'next/types/index.js'
+  export { default } from 'next/types.js'
+  export * from 'next/types.js'
 
   export type Route<T extends string = string> =
     __next_route_internal_types__.RouteImpl<T>
@@ -99,5 +99,23 @@ declare module 'next/navigation' {
     prefetch<RouteType>(href: __next_route_internal_types__.RouteImpl<RouteType>): void
   }
 
-  export declare function useRouter(): AppRouterInstance;
+  export function useRouter(): AppRouterInstance;
+}
+
+declare module 'next/form' {
+  import type { FormProps as OriginalFormProps } from 'next/dist/client/form.js'
+
+  type FormRestProps = Omit<OriginalFormProps, 'action'>
+
+  export type FormProps<RouteInferType> = {
+    /**
+     * `action` can be either a `string` or a function.
+     * - If `action` is a string, it will be interpreted as a path or URL to navigate to when the form is submitted.
+     *   The path will be prefetched when the form becomes visible.
+     * - If `action` is a function, it will be called when the form is submitted. See the [React docs](https://react.dev/reference/react-dom/components/form#props) for more.
+     */
+    action: __next_route_internal_types__.RouteImpl<RouteInferType> | ((formData: FormData) => void)
+  } & FormRestProps
+
+  export default function Form<RouteType>(props: FormProps<RouteType>): JSX.Element
 }

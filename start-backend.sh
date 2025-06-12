@@ -1,5 +1,7 @@
 #!/bin/bash
 
+kill -9 $(lsof -ti :8000)
+
 # GTD Backend Startup Script
 # This script starts the FastAPI backend server with Supabase integration
 
