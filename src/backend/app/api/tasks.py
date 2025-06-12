@@ -1,26 +1,17 @@
 """
-Task API endpoints with GTD workflow functionality
+Task API endpoints with Supabase direct connection
 """
 from typing import List, Optional
 from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
-from sqlalchemy.ext.asyncio import AsyncSession
+from supabase import Client
 
-from app.dependencies import get_db, get_test_user_directly
-from app.crud.task import crud_task
-from app.models.user import User
-from app.schemas.task import (
-    TaskResponse, 
-    TaskCreate, 
-    TaskUpdate, 
-    TaskFilters,
-    TaskStats
-)
+from app.database import get_db
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-@router.get("/", response_model=List[TaskResponse])
+@router.get("/")
 async def get_tasks(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
@@ -40,141 +31,275 @@ async def get_tasks(
     overdue: Optional[bool] = Query(None, description="Filter by overdue status"),
     include_deleted: bool = Query(False, description="Include soft-deleted tasks"),
     search: Optional[str] = Query(None, description="Search in task name"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
-    Get tasks for current user with comprehensive filters
+    Get tasks from Supabase with filters
     
     Returns:
-        List[TaskResponse]: List of task data
+        List[dict]: List of task data
     """
-    filters = TaskFilters(
-        project_id=project_id,
-        field_id=field_id,
-        is_done=is_done,
-        do_today=do_today,
-        do_this_week=do_this_week,
-        is_reading=is_reading,
-        wait_for=wait_for,
-        postponed=postponed,
-        reviewed=reviewed,
-        priority=priority,
-        priority_min=priority_min,
-        priority_max=priority_max,
-        due_date=due_date,
-        overdue=overdue,
-        include_deleted=include_deleted,
-        search=search
-    )
-    
-    tasks = await crud_task.get_by_user(
-        db=db,
-        user_id=current_user.id,
-        skip=skip,
-        limit=limit,
-        filters=filters
-    )
-    return [TaskResponse.from_model(task) for task in tasks]
+    try:
+        # Query tasks from Supabase
+        query = supabase.table("gtd_tasks").select("*")
+        
+        # Add basic filters
+        if not include_deleted:
+            query = query.is_("deleted_at", "null")
+        
+        if project_id:
+            query = query.eq("project_id", project_id)
+        
+        if field_id:
+            query = query.eq("field_id", field_id)
+        
+        if is_done is not None:
+            if is_done:
+                query = query.not_.is_("done_at", "null")
+            else:
+                query = query.is_("done_at", "null")
+        
+        if do_today is not None:
+            query = query.eq("do_today", do_today)
+        
+        if do_this_week is not None:
+            query = query.eq("do_this_week", do_this_week)
+        
+        if is_reading is not None:
+            query = query.eq("is_reading", is_reading)
+        
+        if wait_for is not None:
+            query = query.eq("wait_for", wait_for)
+        
+        if postponed is not None:
+            query = query.eq("postponed", postponed)
+        
+        if reviewed is not None:
+            query = query.eq("reviewed", reviewed)
+        
+        if priority:
+            query = query.eq("priority", priority)
+        
+        if priority_min:
+            query = query.gte("priority", priority_min)
+        
+        if priority_max:
+            query = query.lte("priority", priority_max)
+        
+        if due_date:
+            query = query.eq("due_date", due_date.isoformat())
+        
+        if search:
+            query = query.ilike("task_name", f"%{search}%")
+        
+        # Add pagination
+        query = query.range(skip, skip + limit - 1)
+        
+        # Execute query
+        result = query.execute()
+        
+        # Transform data to match expected format
+        tasks = []
+        for task in result.data:
+            tasks.append({
+                "id": task["id"],
+                "name": task["task_name"] or f"Task {task['id']}",
+                "project_id": task["project_id"],
+                "field_id": task["field_id"],
+                "done_at": task["done_at"],
+                "do_today": task["do_today"],
+                "do_this_week": task["do_this_week"],
+                "is_reading": task["is_reading"],
+                "wait_for": task["wait_for"],
+                "postponed": task["postponed"],
+                "reviewed": task["reviewed"],
+                "priority": task["priority"],
+                "due_date": task["due_date"],
+                "created_at": task["created_at"],
+                "updated_at": task["updated_at"]
+            })
+        
+        return tasks
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch tasks: {str(e)}"
+        )
 
 
-@router.get("/today", response_model=List[TaskResponse])
+@router.get("/today")
 async def get_today_tasks(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
     Get tasks scheduled for today
     
     Returns:
-        List[TaskResponse]: List of today's task data
+        List[dict]: List of today's task data
     """
-    tasks = await crud_task.get_today_tasks(db=db, user_id=current_user.id)
-    return [TaskResponse.from_model(task) for task in tasks]
+    try:
+        result = supabase.table("gtd_tasks").select("*").eq("do_today", True).is_("deleted_at", "null").execute()
+        
+        return [{
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "do_today": task["do_today"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        } for task in result.data]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch today's tasks: {str(e)}"
+        )
 
 
-@router.get("/week", response_model=List[TaskResponse])
+@router.get("/week")
 async def get_week_tasks(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
     Get tasks scheduled for this week
     
     Returns:
-        List[TaskResponse]: List of this week's task data
+        List[dict]: List of this week's task data
     """
-    tasks = await crud_task.get_week_tasks(db=db, user_id=current_user.id)
-    return [TaskResponse.from_model(task) for task in tasks]
+    try:
+        result = supabase.table("gtd_tasks").select("*").eq("do_this_week", True).is_("deleted_at", "null").execute()
+        
+        return [{
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "do_this_week": task["do_this_week"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        } for task in result.data]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch week's tasks: {str(e)}"
+        )
 
 
-@router.get("/overdue", response_model=List[TaskResponse])
-async def get_overdue_tasks(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
-    """
-    Get overdue tasks
-    
-    Returns:
-        List[TaskResponse]: List of overdue task data
-    """
-    tasks = await crud_task.get_overdue_tasks(db=db, user_id=current_user.id)
-    return [TaskResponse.from_model(task) for task in tasks]
-
-
-@router.get("/waiting", response_model=List[TaskResponse])
+@router.get("/waiting")
 async def get_waiting_tasks(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
     Get tasks waiting for someone/something
     
     Returns:
-        List[TaskResponse]: List of waiting task data
+        List[dict]: List of waiting task data
     """
-    tasks = await crud_task.get_waiting_tasks(db=db, user_id=current_user.id)
-    return [TaskResponse.from_model(task) for task in tasks]
+    try:
+        result = supabase.table("gtd_tasks").select("*").eq("wait_for", True).is_("deleted_at", "null").execute()
+        
+        return [{
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "wait_for": task["wait_for"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        } for task in result.data]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch waiting tasks: {str(e)}"
+        )
 
 
-@router.get("/reading", response_model=List[TaskResponse])
+@router.get("/reading")
 async def get_reading_tasks(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
     Get reading tasks
     
     Returns:
-        List[TaskResponse]: List of reading task data
+        List[dict]: List of reading task data
     """
-    tasks = await crud_task.get_reading_tasks(db=db, user_id=current_user.id)
-    return [TaskResponse.from_model(task) for task in tasks]
+    try:
+        result = supabase.table("gtd_tasks").select("*").eq("is_reading", True).is_("deleted_at", "null").execute()
+        
+        return [{
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "is_reading": task["is_reading"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        } for task in result.data]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch reading tasks: {str(e)}"
+        )
 
 
-@router.get("/stats", response_model=TaskStats)
+@router.get("/stats")
 async def get_task_stats(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskStats:
+    supabase: Client = Depends(get_db)
+) -> dict:
     """
-    Get comprehensive task statistics for current user
+    Get comprehensive task statistics
     
     Returns:
-        TaskStats: Task statistics
+        dict: Task statistics
     """
-    stats = await crud_task.get_task_stats(db=db, user_id=current_user.id)
-    return TaskStats(**stats)
+    try:
+        # Get total tasks
+        total_result = supabase.table("gtd_tasks").select("count", count="exact").is_("deleted_at", "null").execute()
+        total_tasks = total_result.count or 0
+        
+        # Get completed tasks
+        completed_result = supabase.table("gtd_tasks").select("count", count="exact").not_.is_("done_at", "null").is_("deleted_at", "null").execute()
+        completed_tasks = completed_result.count or 0
+        
+        # Get today's tasks
+        today_result = supabase.table("gtd_tasks").select("count", count="exact").eq("do_today", True).is_("deleted_at", "null").execute()
+        today_tasks = today_result.count or 0
+        
+        # Get week's tasks
+        week_result = supabase.table("gtd_tasks").select("count", count="exact").eq("do_this_week", True).is_("deleted_at", "null").execute()
+        week_tasks = week_result.count or 0
+        
+        return {
+            "total_tasks": total_tasks,
+            "completed_tasks": completed_tasks,
+            "pending_tasks": total_tasks - completed_tasks,
+            "today_tasks": today_tasks,
+            "week_tasks": week_tasks
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch task stats: {str(e)}"
+        )
 
 
-@router.get("/by-project/{project_id}", response_model=List[TaskResponse])
+@router.get("/by-project/{project_id}")
 async def get_tasks_by_project(
     project_id: int,
     include_completed: bool = Query(False, description="Include completed tasks"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
     Get tasks for a specific project
     
@@ -183,26 +308,40 @@ async def get_tasks_by_project(
         include_completed: Include completed tasks
         
     Returns:
-        List[TaskResponse]: List of task data
+        List[dict]: List of task data
     """
-    tasks = await crud_task.get_tasks_by_project(
-        db=db,
-        project_id=project_id,
-        include_completed=include_completed
-    )
-    # Filter by user ownership through project
-    user_tasks = [task for task in tasks if task.user_id == current_user.id]
-    return [TaskResponse.from_model(task) for task in user_tasks]
+    try:
+        query = supabase.table("gtd_tasks").select("*").eq("project_id", project_id).is_("deleted_at", "null")
+        
+        if not include_completed:
+            query = query.is_("done_at", "null")
+        
+        result = query.execute()
+        
+        return [{
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        } for task in result.data]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch project tasks: {str(e)}"
+        )
 
 
-@router.get("/search", response_model=List[TaskResponse])
+@router.get("/search")
 async def search_tasks(
     query: str = Query(..., min_length=1, description="Search query"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum number of records to return"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> List[TaskResponse]:
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
     """
     Search tasks by name
     
@@ -212,24 +351,33 @@ async def search_tasks(
         limit: Maximum number of records to return
         
     Returns:
-        List[TaskResponse]: List of matching task data
+        List[dict]: List of matching task data
     """
-    tasks = await crud_task.search_tasks(
-        db=db,
-        user_id=current_user.id,
-        query=query,
-        skip=skip,
-        limit=limit
-    )
-    return [TaskResponse.from_model(task) for task in tasks]
+    try:
+        result = supabase.table("gtd_tasks").select("*").ilike("task_name", f"%{query}%").is_("deleted_at", "null").range(skip, skip + limit - 1).execute()
+        
+        return [{
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        } for task in result.data]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to search tasks: {str(e)}"
+        )
 
 
-@router.get("/{task_id}", response_model=TaskResponse)
+@router.get("/{task_id}")
 async def get_task(
     task_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
+    supabase: Client = Depends(get_db)
+) -> dict:
     """
     Get task by ID
     
@@ -237,82 +385,51 @@ async def get_task(
         task_id: Task ID
         
     Returns:
-        TaskResponse: Task data
+        dict: Task data
     """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-    return TaskResponse.from_model(task)
-
-
-@router.post("/", response_model=TaskResponse)
-async def create_task(
-    task_create: TaskCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
-    """
-    Create a new task
-    
-    Args:
-        task_create: Task creation data
+    try:
+        result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
         
-    Returns:
-        TaskResponse: Created task data
-    """
-    # Set user_id from current user
-    task_data = task_create.model_dump()
-    task_data["user_id"] = current_user.id
-    
-    # Recreate with user_id
-    task_create_with_user = TaskCreate(**task_data)
-    
-    task = await crud_task.create(db=db, obj_in=task_create_with_user)
-    return TaskResponse.from_model(task)
-
-
-@router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(
-    task_id: int,
-    task_update: TaskUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
-    """
-    Update a task
-    
-    Args:
-        task_id: Task ID
-        task_update: Task update data
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
         
-    Returns:
-        TaskResponse: Updated task data
-    """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
+        task = result.data[0]
+        return {
+            "id": task["id"],
+            "name": task["task_name"] or f"Task {task['id']}",
+            "project_id": task["project_id"],
+            "field_id": task["field_id"],
+            "done_at": task["done_at"],
+            "do_today": task["do_today"],
+            "do_this_week": task["do_this_week"],
+            "is_reading": task["is_reading"],
+            "wait_for": task["wait_for"],
+            "postponed": task["postponed"],
+            "reviewed": task["reviewed"],
+            "priority": task["priority"],
+            "due_date": task["due_date"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch task: {str(e)}"
         )
-    
-    updated_task = await crud_task.update(
-        db=db, 
-        db_obj=task, 
-        obj_in=task_update
-    )
-    return TaskResponse.from_model(updated_task)
 
 
-@router.post("/{task_id}/complete", response_model=TaskResponse)
+@router.post("/{task_id}/complete")
 async def complete_task(
     task_id: int,
     completion_time: Optional[datetime] = Body(None, description="Optional completion timestamp"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
+    supabase: Client = Depends(get_db)
+) -> dict:
     """
     Mark a task as completed
     
@@ -321,35 +438,47 @@ async def complete_task(
         completion_time: Optional completion timestamp
         
     Returns:
-        TaskResponse: Completed task data
+        dict: Completed task data
     """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
+    try:
+        # Get the task first
+        task_result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
+        
+        if not task_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        task = task_result.data[0]
+        
+        if task["done_at"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task is already completed"
+            )
+        
+        # Update task with completion timestamp
+        update_data = {"done_at": (completion_time or datetime.now()).isoformat()}
+        
+        result = supabase.table("gtd_tasks").update(update_data).eq("id", task_id).execute()
+        
+        return {"message": "Task completed successfully", "task_id": task_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to complete task: {str(e)}"
         )
-    
-    if task.done_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Task is already completed"
-        )
-    
-    completed_task = await crud_task.complete_task(
-        db=db,
-        task=task,
-        completion_time=completion_time
-    )
-    return TaskResponse.from_model(completed_task)
 
 
-@router.post("/{task_id}/reopen", response_model=TaskResponse)
+@router.post("/{task_id}/reopen")
 async def reopen_task(
     task_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
+    supabase: Client = Depends(get_db)
+) -> dict:
     """
     Reopen a completed task
     
@@ -357,154 +486,47 @@ async def reopen_task(
         task_id: Task ID
         
     Returns:
-        TaskResponse: Reopened task data
+        dict: Reopened task data
     """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-    
-    if not task.done_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Task is not completed"
-        )
-    
-    reopened_task = await crud_task.reopen_task(db=db, task=task)
-    return TaskResponse.from_model(reopened_task)
-
-
-@router.post("/{task_id}/schedule-today", response_model=TaskResponse)
-async def schedule_task_for_today(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
-    """
-    Schedule task for today
-    
-    Args:
-        task_id: Task ID
-        
-    Returns:
-        TaskResponse: Updated task data
-    """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-    
-    updated_task = await crud_task.schedule_for_today(db=db, task=task)
-    return TaskResponse.from_model(updated_task)
-
-
-@router.post("/{task_id}/schedule-week", response_model=TaskResponse)
-async def schedule_task_for_week(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
-    """
-    Schedule task for this week
-    
-    Args:
-        task_id: Task ID
-        
-    Returns:
-        TaskResponse: Updated task data
-    """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-    
-    updated_task = await crud_task.schedule_for_week(db=db, task=task)
-    return TaskResponse.from_model(updated_task)
-
-
-@router.post("/{task_id}/set-priority", response_model=TaskResponse)
-async def set_task_priority(
-    task_id: int,
-    priority: int = Body(..., ge=1, le=5, description="Priority level (1-5)"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
-    """
-    Set task priority
-    
-    Args:
-        task_id: Task ID
-        priority: Priority level (1-5)
-        
-    Returns:
-        TaskResponse: Updated task data
-    """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-    
     try:
-        updated_task = await crud_task.set_priority(
-            db=db,
-            task=task,
-            priority=priority
-        )
-        return TaskResponse.from_model(updated_task)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
-
-@router.post("/bulk-complete")
-async def bulk_complete_tasks(
-    task_ids: List[int] = Body(..., description="List of task IDs to complete"),
-    completion_time: Optional[datetime] = Body(None, description="Optional completion timestamp"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> dict:
-    """
-    Bulk complete multiple tasks
-    
-    Args:
-        task_ids: List of task IDs
-        completion_time: Optional completion timestamp
+        # Get the task first
+        task_result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
         
-    Returns:
-        dict: Number of tasks completed
-    """
-    if not task_ids:
+        if not task_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        task = task_result.data[0]
+        
+        if not task["done_at"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task is not completed"
+            )
+        
+        # Update task to remove completion timestamp
+        update_data = {"done_at": None}
+        
+        result = supabase.table("gtd_tasks").update(update_data).eq("id", task_id).execute()
+        
+        return {"message": "Task reopened successfully", "task_id": task_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Task IDs list cannot be empty"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reopen task: {str(e)}"
         )
-    
-    count = await crud_task.bulk_complete_tasks(
-        db=db,
-        task_ids=task_ids,
-        user_id=current_user.id,
-        completion_time=completion_time
-    )
-    
-    return {"completed_count": count, "message": f"{count} tasks completed successfully"}
 
 
 @router.delete("/{task_id}")
 async def delete_task(
     task_id: int,
     hard_delete: bool = Query(False, description="Permanently delete the task"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
+    supabase: Client = Depends(get_db)
 ) -> dict:
     """
     Delete a task (soft delete by default)
@@ -516,39 +538,32 @@ async def delete_task(
     Returns:
         dict: Success message
     """
-    task = await crud_task.get(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-    
-    await crud_task.delete(db=db, id=task_id, hard_delete=hard_delete)
-    
-    action = "permanently deleted" if hard_delete else "soft deleted"
-    return {"message": f"Task {action} successfully"}
-
-
-@router.post("/{task_id}/restore", response_model=TaskResponse)
-async def restore_task(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_test_user_directly)
-) -> TaskResponse:
-    """
-    Restore a soft-deleted task
-    
-    Args:
-        task_id: Task ID
+    try:
+        # Check if task exists
+        task_result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
         
-    Returns:
-        TaskResponse: Restored task data
-    """
-    task = await crud_task.restore(db=db, id=task_id)
-    if not task or task.user_id != current_user.id:
+        if not task_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        if hard_delete:
+            # Permanently delete the task
+            result = supabase.table("gtd_tasks").delete().eq("id", task_id).execute()
+            action = "permanently deleted"
+        else:
+            # Soft delete - set deleted_at timestamp
+            update_data = {"deleted_at": datetime.now().isoformat()}
+            result = supabase.table("gtd_tasks").update(update_data).eq("id", task_id).execute()
+            action = "soft deleted"
+        
+        return {"message": f"Task {action} successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found or not deleted"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete task: {str(e)}"
         )
-    
-    return TaskResponse.from_model(task)

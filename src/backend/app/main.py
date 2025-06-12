@@ -9,11 +9,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-
 from app.config import get_settings
-from app.database import engine, async_session_maker
+from app.database import test_connection
 from app.api import users, fields, projects, tasks, dashboard, search, quick_add
 
 # Configure logging
@@ -39,13 +36,14 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"Environment: {settings.app.environment}")
     
-    # Test database connection
+    # Test Supabase connection
     try:
-        async with async_session_maker() as session:
-            await session.execute(text("SELECT 1"))
-        logger.info("Database connection successful")
+        if test_connection():
+            logger.info("Supabase connection successful")
+        else:
+            logger.warning("Supabase connection test failed - some features may not work")
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
+        logger.error(f"Supabase connection failed: {e}")
         logger.warning("Starting server without database connection - some features may not work")
         # Don't raise in development to allow server to start without DB
     
@@ -53,7 +51,6 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down GTD Backend Application")
-    await engine.dispose()
 
 
 # Create FastAPI application
@@ -118,19 +115,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-@app.exception_handler(SQLAlchemyError)
-async def database_exception_handler(request: Request, exc: SQLAlchemyError):
-    """
-    Handle database errors
-    """
-    logger.error(f"Database error for {request.url}: {exc}")
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": "Database Error",
-            "detail": "An error occurred while processing your request"
-        }
-    )
 
 
 @app.exception_handler(Exception)
@@ -162,8 +146,9 @@ async def health_check():
     # Test database connection
     db_status = "healthy"
     try:
-        async with async_session_maker() as session:
-            await session.execute(text("SELECT 1"))
+        from app.database import test_connection
+        if not test_connection():
+            db_status = "unhealthy: Supabase connection failed"
     except Exception as e:
         db_status = f"unhealthy: {e}"
         logger.error(f"Database health check failed: {e}")
