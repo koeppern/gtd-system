@@ -54,12 +54,8 @@ fi
 # Navigate to backend directory
 cd src/backend
 
-# Check if backend .env exists and has Supabase config
-if [ ! -f ".env" ]; then
-    echo -e "${RED}❌ Error: Backend .env file not found.${NC}"
-    echo -e "${YELLOW}💡 Please ensure src/backend/.env exists with Supabase configuration.${NC}"
-    exit 1
-fi
+# The backend automatically finds .env file using find_dotenv() 
+# so we don't need a separate backend .env file
 
 # Test database connection and suggest fallback if needed
 echo -e "${BLUE}🔌 Testing database connection...${NC}"
