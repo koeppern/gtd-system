@@ -49,6 +49,13 @@ const navigation: NavItem[] = [
     iconSolid: HomeIconSolid,
     current: true,
   },
+  {
+    name: 'Projects',
+    href: '/projects',
+    icon: FolderIcon,
+    iconSolid: FolderIconSolid,
+    current: false,
+  },
 ];
 
 const secondaryNavigation = [];
