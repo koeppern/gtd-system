@@ -60,6 +60,52 @@ async def get_projects(
         )
 
 
+@router.get("/weekly")
+async def get_weekly_projects(
+    supabase: Client = Depends(get_db)
+) -> List[dict]:
+    """
+    Get projects marked for this week
+    
+    Returns:
+        List[dict]: List of projects with do_this_week=true
+    """
+    try:
+        # Get settings for user ID
+        from app.config import get_settings
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        # Query projects for this week
+        query = supabase.table("gtd_projects").select("*")
+        query = query.eq("user_id", default_user_id)
+        query = query.is_("deleted_at", "null")
+        query = query.eq("do_this_week", "true")
+        
+        result = query.execute()
+        
+        # Transform data to match expected format
+        projects = []
+        for project in result.data:
+            projects.append({
+                "id": project["id"],
+                "name": project["project_name"] or f"Project {project['id']}",
+                "field_id": project["field_id"],
+                "done_status": project["done_status"],
+                "do_this_week": project["do_this_week"],
+                "keywords": project["keywords"],
+                "readings": project["readings"],
+                "created_at": project["created_at"],
+                "updated_at": project["updated_at"]
+            })
+        
+        return projects
+        
+    except Exception as e:
+        # Return empty list in case of error
+        return []
+
+
 @router.get("/{project_id}")
 async def get_project(
     project_id: int,
