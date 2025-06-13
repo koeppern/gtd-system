@@ -17,11 +17,13 @@ import {
 
 interface Project {
   id: number;
-  project_name: string;
+  project_name?: string;
+  name?: string; // Backend sends 'name' instead of 'project_name'
   done_status?: boolean;
   done_at?: string;
   field_id?: number;
   do_this_week?: boolean;
+  task_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -33,7 +35,7 @@ interface ProjectsListProps {
 }
 
 export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsListProps) {
-  const [sortBy, setSortBy] = useState<'name' | 'created' | 'updated'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'tasks' | 'created' | 'updated'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   if (isLoading) {
@@ -59,8 +61,16 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
 
     switch (sortBy) {
       case 'name':
-        aValue = a.project_name.toLowerCase();
-        bValue = b.project_name.toLowerCase();
+        aValue = (a.project_name || a.name || '').toLowerCase();
+        bValue = (b.project_name || b.name || '').toLowerCase();
+        break;
+      case 'status':
+        aValue = a.done_status ? 1 : 0;
+        bValue = b.done_status ? 1 : 0;
+        break;
+      case 'tasks':
+        aValue = a.task_count || 0;
+        bValue = b.task_count || 0;
         break;
       case 'created':
         aValue = new Date(a.created_at).getTime();
@@ -71,8 +81,8 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
         bValue = new Date(b.updated_at).getTime();
         break;
       default:
-        aValue = a.project_name.toLowerCase();
-        bValue = b.project_name.toLowerCase();
+        aValue = (a.project_name || a.name || '').toLowerCase();
+        bValue = (b.project_name || b.name || '').toLowerCase();
     }
 
     if (sortOrder === 'asc') {
@@ -82,7 +92,7 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
     }
   });
 
-  const handleSort = (newSortBy: 'name' | 'created' | 'updated') => {
+  const handleSort = (newSortBy: 'name' | 'status' | 'tasks' | 'created' | 'updated') => {
     if (sortBy === newSortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -137,7 +147,30 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                     </button>
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    Status
+                    <button
+                      onClick={() => handleSort('status')}
+                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
+                    >
+                      <span>Status</span>
+                      {sortBy === 'status' && (
+                        <span className="text-xs">
+                          {sortOrder === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="text-center py-4 px-6 font-semibold text-muted-foreground">
+                    <button
+                      onClick={() => handleSort('tasks')}
+                      className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
+                    >
+                      <span>Tasks</span>
+                      {sortBy === 'tasks' && (
+                        <span className="text-xs">
+                          {sortOrder === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
                     <button
@@ -183,7 +216,7 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                         )}
                         <div>
                           <div className="font-medium text-foreground">
-                            {project.project_name}
+                            {project.project_name || project.name || `Project ${project.id}`}
                           </div>
                           {project.do_this_week && (
                             <Badge variant="secondary" className="text-xs mt-1">
@@ -204,11 +237,14 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                         </Badge>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-muted-foreground">
-                      {new Date(project.created_at).toLocaleDateString()}
+                    <td className="py-4 px-6 text-center text-muted-foreground">
+                      {project.task_count || 0}
                     </td>
                     <td className="py-4 px-6 text-muted-foreground">
-                      {new Date(project.updated_at).toLocaleDateString()}
+                      {new Date(project.created_at).toISOString().split('T')[0]}
+                    </td>
+                    <td className="py-4 px-6 text-muted-foreground">
+                      {new Date(project.updated_at).toISOString().split('T')[0]}
                     </td>
                     <td className="py-4 px-6">
                       <Button variant="ghost" size="sm">

@@ -14,6 +14,8 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 async def get_projects(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    is_done: Optional[bool] = Query(None, description="Filter by completion status"),
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
     supabase: Client = Depends(get_db)
 ) -> List[dict]:
     """
@@ -30,15 +32,31 @@ async def get_projects(
         # Add filters
         query = query.is_("deleted_at", "null")  # Exclude deleted projects
         
+        # Filter by user if provided
+        if user_id:
+            query = query.eq("user_id", user_id)
+        
+        # Filter by completion status if provided
+        if is_done is not None:
+            query = query.eq("done_status", is_done)
+        
         # Add pagination
         query = query.range(skip, skip + limit - 1)
         
         # Execute query with bypass_rls option if available
         result = query.execute()
         
-        # Transform data to match expected format
+        # Transform data to match expected format and get task counts
         projects = []
         for project in result.data:
+            # Count tasks for this project
+            task_count_result = supabase.table("gtd_tasks").select("id", count="exact") \
+                .eq("project_id", project["id"]) \
+                .is_("deleted_at", "null") \
+                .execute()
+            
+            task_count = task_count_result.count if task_count_result.count is not None else 0
+            
             projects.append({
                 "id": project["id"],
                 "name": project["project_name"] or f"Project {project['id']}",
@@ -47,6 +65,7 @@ async def get_projects(
                 "do_this_week": project["do_this_week"],
                 "keywords": project["keywords"],
                 "readings": project["readings"],
+                "task_count": task_count,
                 "created_at": project["created_at"],
                 "updated_at": project["updated_at"]
             })

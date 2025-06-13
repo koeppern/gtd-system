@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const params: Record<string, any> = {
       limit,
       offset,
+      user_id: userId,
     };
 
     // Filter by completion status
@@ -46,7 +47,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch data from Python backend using server-side client
-    const projects = await backendApi.projects.list(params, userId);
+    const backendProjects = await backendApi.projects.list(params, userId);
+    
+    
+    // Transform backend data to match frontend expectations
+    const transformedProjects = Array.isArray(backendProjects) ? backendProjects : [];
+    const projects = {
+      items: transformedProjects.map((project: any) => ({
+        id: project.id,
+        project_name: project.name || project.project_name || `Project ${project.id}`,
+        done_status: project.done_status,
+        done_at: project.done_at || null,
+        field_id: project.field_id,
+        do_this_week: project.do_this_week,
+        task_count: project.task_count || 0,
+        keywords: project.keywords,
+        readings: project.readings,
+        created_at: project.created_at,
+        updated_at: project.updated_at,
+      })),
+      total: transformedProjects.length,
+      limit: limit,
+      offset: offset,
+    };
     
     // Log successful requests (remove in production)
     console.log('Projects fetched successfully:', {

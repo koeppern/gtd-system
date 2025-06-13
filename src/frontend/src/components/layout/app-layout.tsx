@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { 
@@ -37,7 +38,6 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   iconSolid: React.ComponentType<{ className?: string }>;
-  current: boolean;
   badge?: number;
 }
 
@@ -47,14 +47,12 @@ const navigation: NavItem[] = [
     href: '/',
     icon: HomeIcon,
     iconSolid: HomeIconSolid,
-    current: true,
   },
   {
     name: 'Projects',
     href: '/projects',
     icon: FolderIcon,
     iconSolid: FolderIconSolid,
-    current: false,
   },
 ];
 
@@ -63,6 +61,7 @@ const secondaryNavigation = [];
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,13 +72,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       )}>
         <div className="fixed inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r border-border">
-          <SidebarContent onItemClick={() => setSidebarOpen(false)} />
+          <SidebarContent onItemClick={() => setSidebarOpen(false)} pathname={pathname} />
         </div>
       </div>
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:block lg:w-64 lg:bg-background lg:border-r lg:border-border">
-        <SidebarContent />
+        <SidebarContent pathname={pathname} />
       </div>
 
       {/* Main content */}
@@ -144,7 +143,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 }
 
-function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
+function SidebarContent({ onItemClick, pathname }: { onItemClick?: () => void; pathname: string }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
@@ -163,7 +162,8 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           <li>
             <ul role="list" className="-mx-2 space-y-1">
               {navigation.map((item) => {
-                const Icon = item.current ? item.iconSolid : item.icon;
+                const isCurrent = pathname === item.href;
+                const Icon = isCurrent ? item.iconSolid : item.icon;
                 return (
                   <li key={item.name}>
                     <a
@@ -171,7 +171,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
                       onClick={onItemClick}
                       className={cn(
                         'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors',
-                        item.current
+                        isCurrent
                           ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
@@ -181,7 +181,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
                       {item.badge && (
                         <span className={cn(
                           'ml-auto inline-block rounded-full px-2 py-1 text-xs',
-                          item.current
+                          isCurrent
                             ? 'bg-primary-foreground text-primary'
                             : 'bg-muted text-muted-foreground'
                         )}>
