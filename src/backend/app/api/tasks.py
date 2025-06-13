@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from supabase import Client
 
 from app.database import get_db
+from app.config import get_settings
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -40,8 +41,15 @@ async def get_tasks(
         List[dict]: List of task data
     """
     try:
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
         # Query tasks from Supabase
         query = supabase.table("gtd_tasks").select("*")
+        
+        # Add user filter for RLS compliance
+        query = query.eq("user_id", default_user_id)
         
         # Add basic filters
         if not include_deleted:
@@ -60,22 +68,22 @@ async def get_tasks(
                 query = query.is_("done_at", "null")
         
         if do_today is not None:
-            query = query.eq("do_today", do_today)
+            query = query.eq("do_today", str(do_today).lower())
         
         if do_this_week is not None:
-            query = query.eq("do_this_week", do_this_week)
+            query = query.eq("do_this_week", str(do_this_week).lower())
         
         if is_reading is not None:
-            query = query.eq("is_reading", is_reading)
+            query = query.eq("is_reading", str(is_reading).lower())
         
         if wait_for is not None:
-            query = query.eq("wait_for", wait_for)
+            query = query.eq("wait_for", str(wait_for).lower())
         
         if postponed is not None:
-            query = query.eq("postponed", postponed)
+            query = query.eq("postponed", str(postponed).lower())
         
         if reviewed is not None:
-            query = query.eq("reviewed", reviewed)
+            query = query.eq("reviewed", str(reviewed).lower())
         
         if priority:
             query = query.eq("priority", priority)
@@ -87,7 +95,7 @@ async def get_tasks(
             query = query.lte("priority", priority_max)
         
         if due_date:
-            query = query.eq("due_date", due_date.isoformat())
+            query = query.eq("do_on_date", due_date.isoformat())  # Use actual column name
         
         if search:
             query = query.ilike("task_name", f"%{search}%")
@@ -98,26 +106,36 @@ async def get_tasks(
         # Execute query
         result = query.execute()
         
+        # Log the response for debugging
+        print(f"Query returned {len(result.data) if result.data else 0} tasks")
+        if not result.data:
+            return []  # Return empty list if no data
+        
         # Transform data to match expected format
         tasks = []
         for task in result.data:
-            tasks.append({
-                "id": task["id"],
-                "name": task["task_name"] or f"Task {task['id']}",
-                "project_id": task["project_id"],
-                "field_id": task["field_id"],
-                "done_at": task["done_at"],
-                "do_today": task["do_today"],
-                "do_this_week": task["do_this_week"],
-                "is_reading": task["is_reading"],
-                "wait_for": task["wait_for"],
-                "postponed": task["postponed"],
-                "reviewed": task["reviewed"],
-                "priority": task["priority"],
-                "due_date": task["due_date"],
-                "created_at": task["created_at"],
-                "updated_at": task["updated_at"]
-            })
+            try:
+                tasks.append({
+                    "id": task.get("id"),
+                    "name": task.get("task_name") or f"Task {task.get('id', 'Unknown')}",
+                    "project_id": task.get("project_id"),
+                    "field_id": task.get("field_id"),
+                    "done_at": task.get("done_at"),
+                    "do_today": task.get("do_today", False),
+                    "do_this_week": task.get("do_this_week", False),
+                    "is_reading": task.get("is_reading", False),
+                    "wait_for": task.get("wait_for", False),
+                    "postponed": task.get("postponed", False),
+                    "reviewed": task.get("reviewed", False),
+                    "priority": task.get("priority"),
+                    "due_date": task.get("do_on_date"),  # Map do_on_date to due_date
+                    "created_at": task.get("created_at"),
+                    "updated_at": task.get("updated_at")
+                })
+            except Exception as task_error:
+                print(f"Error processing task {task.get('id', 'unknown')}: {task_error}")
+                print(f"Task data: {task}")
+                raise
         
         return tasks
         
@@ -139,17 +157,24 @@ async def get_today_tasks(
         List[dict]: List of today's task data
     """
     try:
-        result = supabase.table("gtd_tasks").select("*").eq("do_today", True).is_("deleted_at", "null").execute()
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("do_today", "true").is_("deleted_at", "null").execute()
+        
+        if not result.data:
+            return []
         
         return [{
-            "id": task["id"],
-            "name": task["task_name"] or f"Task {task['id']}",
-            "project_id": task["project_id"],
-            "field_id": task["field_id"],
-            "done_at": task["done_at"],
-            "do_today": task["do_today"],
-            "created_at": task["created_at"],
-            "updated_at": task["updated_at"]
+            "id": task.get("id"),
+            "name": task.get("task_name") or f"Task {task.get('id', 'Unknown')}",
+            "project_id": task.get("project_id"),
+            "field_id": task.get("field_id"),
+            "done_at": task.get("done_at"),
+            "do_today": task.get("do_today", True),
+            "created_at": task.get("created_at"),
+            "updated_at": task.get("updated_at")
         } for task in result.data]
         
     except Exception as e:
@@ -170,7 +195,11 @@ async def get_week_tasks(
         List[dict]: List of this week's task data
     """
     try:
-        result = supabase.table("gtd_tasks").select("*").eq("do_this_week", True).is_("deleted_at", "null").execute()
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("do_this_week", "true").is_("deleted_at", "null").execute()
         
         return [{
             "id": task["id"],
@@ -201,7 +230,11 @@ async def get_waiting_tasks(
         List[dict]: List of waiting task data
     """
     try:
-        result = supabase.table("gtd_tasks").select("*").eq("wait_for", True).is_("deleted_at", "null").execute()
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("wait_for", "true").is_("deleted_at", "null").execute()
         
         return [{
             "id": task["id"],
@@ -232,7 +265,11 @@ async def get_reading_tasks(
         List[dict]: List of reading task data
     """
     try:
-        result = supabase.table("gtd_tasks").select("*").eq("is_reading", True).is_("deleted_at", "null").execute()
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("is_reading", "true").is_("deleted_at", "null").execute()
         
         return [{
             "id": task["id"],
@@ -263,20 +300,24 @@ async def get_task_stats(
         dict: Task statistics
     """
     try:
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
         # Get total tasks
-        total_result = supabase.table("gtd_tasks").select("count", count="exact").is_("deleted_at", "null").execute()
+        total_result = supabase.table("gtd_tasks").select("count", count="exact").eq("user_id", default_user_id).is_("deleted_at", "null").execute()
         total_tasks = total_result.count or 0
         
         # Get completed tasks
-        completed_result = supabase.table("gtd_tasks").select("count", count="exact").not_.is_("done_at", "null").is_("deleted_at", "null").execute()
+        completed_result = supabase.table("gtd_tasks").select("count", count="exact").eq("user_id", default_user_id).not_.is_("done_at", "null").is_("deleted_at", "null").execute()
         completed_tasks = completed_result.count or 0
         
         # Get today's tasks
-        today_result = supabase.table("gtd_tasks").select("count", count="exact").eq("do_today", True).is_("deleted_at", "null").execute()
+        today_result = supabase.table("gtd_tasks").select("count", count="exact").eq("user_id", default_user_id).eq("do_today", "true").is_("deleted_at", "null").execute()
         today_tasks = today_result.count or 0
         
         # Get week's tasks
-        week_result = supabase.table("gtd_tasks").select("count", count="exact").eq("do_this_week", True).is_("deleted_at", "null").execute()
+        week_result = supabase.table("gtd_tasks").select("count", count="exact").eq("user_id", default_user_id).eq("do_this_week", "true").is_("deleted_at", "null").execute()
         week_tasks = week_result.count or 0
         
         return {
@@ -311,7 +352,11 @@ async def get_tasks_by_project(
         List[dict]: List of task data
     """
     try:
-        query = supabase.table("gtd_tasks").select("*").eq("project_id", project_id).is_("deleted_at", "null")
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        query = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("project_id", project_id).is_("deleted_at", "null")
         
         if not include_completed:
             query = query.is_("done_at", "null")
@@ -354,7 +399,11 @@ async def search_tasks(
         List[dict]: List of matching task data
     """
     try:
-        result = supabase.table("gtd_tasks").select("*").ilike("task_name", f"%{query}%").is_("deleted_at", "null").range(skip, skip + limit - 1).execute()
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).ilike("task_name", f"%{query}%").is_("deleted_at", "null").range(skip, skip + limit - 1).execute()
         
         return [{
             "id": task["id"],
@@ -388,7 +437,11 @@ async def get_task(
         dict: Task data
     """
     try:
-        result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("id", task_id).is_("deleted_at", "null").execute()
         
         if not result.data:
             raise HTTPException(
@@ -398,21 +451,21 @@ async def get_task(
         
         task = result.data[0]
         return {
-            "id": task["id"],
-            "name": task["task_name"] or f"Task {task['id']}",
-            "project_id": task["project_id"],
-            "field_id": task["field_id"],
-            "done_at": task["done_at"],
-            "do_today": task["do_today"],
-            "do_this_week": task["do_this_week"],
-            "is_reading": task["is_reading"],
-            "wait_for": task["wait_for"],
-            "postponed": task["postponed"],
-            "reviewed": task["reviewed"],
-            "priority": task["priority"],
-            "due_date": task["due_date"],
-            "created_at": task["created_at"],
-            "updated_at": task["updated_at"]
+            "id": task.get("id"),
+            "name": task.get("task_name") or f"Task {task.get('id', 'Unknown')}",
+            "project_id": task.get("project_id"),
+            "field_id": task.get("field_id"),
+            "done_at": task.get("done_at"),
+            "do_today": task.get("do_today", False),
+            "do_this_week": task.get("do_this_week", False),
+            "is_reading": task.get("is_reading", False),
+            "wait_for": task.get("wait_for", False),
+            "postponed": task.get("postponed", False),
+            "reviewed": task.get("reviewed", False),
+            "priority": task.get("priority"),
+            "due_date": task.get("do_on_date"),  # Map do_on_date to due_date
+            "created_at": task.get("created_at"),
+            "updated_at": task.get("updated_at")
         }
         
     except HTTPException:
@@ -441,8 +494,12 @@ async def complete_task(
         dict: Completed task data
     """
     try:
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
         # Get the task first
-        task_result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
+        task_result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("id", task_id).is_("deleted_at", "null").execute()
         
         if not task_result.data:
             raise HTTPException(
@@ -489,8 +546,12 @@ async def reopen_task(
         dict: Reopened task data
     """
     try:
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
         # Get the task first
-        task_result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
+        task_result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("id", task_id).is_("deleted_at", "null").execute()
         
         if not task_result.data:
             raise HTTPException(
@@ -539,8 +600,12 @@ async def delete_task(
         dict: Success message
     """
     try:
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
         # Check if task exists
-        task_result = supabase.table("gtd_tasks").select("*").eq("id", task_id).is_("deleted_at", "null").execute()
+        task_result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("id", task_id).is_("deleted_at", "null").execute()
         
         if not task_result.data:
             raise HTTPException(
