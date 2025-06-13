@@ -57,6 +57,7 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         except Exception as e:
             if "done_at does not exist" in str(e):
                 # Fallback to old done_status logic
+                print(f"INFO: Using done_status fallback (done_at column not found)")
                 active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", False).execute()
                 active_projects = len(active_projects_response.data) if active_projects_response.data else 0
                 
