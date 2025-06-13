@@ -26,10 +26,10 @@ if [ ! -d "src/frontend" ]; then
     echo -e "${YELLOW}💡 Available options:${NC}"
     
     # Check for alternative frontend directories
-    if [ -d "src/frontend-prototype" ]; then
-        echo -e "${YELLOW}📁 Found: src/frontend-prototype${NC}"
-        echo -e "${BLUE}🔄 Using prototype frontend...${NC}"
-        cd src/frontend-prototype
+    if [ -d "src/frontend" ]; then
+        echo -e "${YELLOW}📁 Found: src/frontend${NC}"
+        echo -e "${BLUE}🔄 Using  frontend...${NC}"
+        cd src/frontend
     elif [ -d "frontend" ]; then
         echo -e "${YELLOW}📁 Found: frontend${NC}"
         echo -e "${BLUE}🔄 Using frontend directory...${NC}"
@@ -37,7 +37,7 @@ if [ ! -d "src/frontend" ]; then
     else
         echo -e "${RED}❌ No frontend directory found. Please create one of:${NC}"
         echo "  - src/frontend"
-        echo "  - src/frontend-prototype" 
+        echo "  - src/frontend" 
         echo "  - frontend"
         exit 1
     fi
