@@ -44,12 +44,26 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").execute()
         total_projects = len(projects_response.data) if projects_response.data else 0
         
-        # Active projects (not completed)
-        active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", False).execute()
-        active_projects = len(active_projects_response.data) if active_projects_response.data else 0
-        
-        # Completed projects
-        completed_projects = total_projects - active_projects
+        # Try new done_at logic first, fallback to done_status if column doesn't exist
+        try:
+            # Active projects (done_at is null)
+            active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").is_("done_at", "null").execute()
+            active_projects = len(active_projects_response.data) if active_projects_response.data else 0
+            
+            # Completed projects (done_at is not null)
+            completed_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").not_.is_("done_at", "null").execute()
+            completed_projects = len(completed_projects_response.data) if completed_projects_response.data else 0
+            
+        except Exception as e:
+            if "done_at does not exist" in str(e):
+                # Fallback to old done_status logic
+                active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", False).execute()
+                active_projects = len(active_projects_response.data) if active_projects_response.data else 0
+                
+                completed_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", True).execute()
+                completed_projects = len(completed_projects_response.data) if completed_projects_response.data else 0
+            else:
+                raise e
         
         # === TASK STATISTICS ===
         
@@ -57,19 +71,20 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         tasks_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").execute()
         total_tasks = len(tasks_response.data) if tasks_response.data else 0
         
-        # Pending tasks (not completed)
+        # Pending tasks (done_at is null)
         pending_tasks_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").is_("done_at", "null").execute()
         pending_tasks = len(pending_tasks_response.data) if pending_tasks_response.data else 0
         
-        # Completed tasks
-        completed_tasks = total_tasks - pending_tasks
+        # Completed tasks (done_at is not null)
+        completed_tasks_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").not_.is_("done_at", "null").execute()
+        completed_tasks = len(completed_tasks_response.data) if completed_tasks_response.data else 0
         
-        # Tasks for today
-        tasks_today_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("do_today", "true").execute()
+        # Tasks for today (not completed)
+        tasks_today_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("do_today", True).is_("done_at", "null").execute()
         tasks_today = len(tasks_today_response.data) if tasks_today_response.data else 0
         
-        # Tasks for this week
-        tasks_week_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("do_this_week", "true").execute()
+        # Tasks for this week (not completed)
+        tasks_week_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("do_this_week", True).is_("done_at", "null").execute()
         tasks_this_week = len(tasks_week_response.data) if tasks_week_response.data else 0
         
         # Overdue tasks (do_on_date in the past and not completed)
