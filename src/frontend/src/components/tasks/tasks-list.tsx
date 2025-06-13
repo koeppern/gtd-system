@@ -145,7 +145,7 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-center py-4 px-6 font-semibold text-muted-foreground w-16">
-                    #
+                    No
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
                     <button
