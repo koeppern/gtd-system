@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.config import get_settings
 from app.database import test_connection
-from app.api import users, fields, projects, tasks, dashboard, search, quick_add
+from app.api import users, fields, projects, tasks, dashboard, search, quick_add, weekly_review
 
 # Configure logging
 logging.basicConfig(
@@ -90,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(search.router, prefix="/api")
     app.include_router(quick_add.router, prefix="/api")
+    app.include_router(weekly_review.router, prefix="/api")
     
     return app
 

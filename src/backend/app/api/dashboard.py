@@ -45,7 +45,7 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         total_projects = len(projects_response.data) if projects_response.data else 0
         
         # Active projects (not completed)
-        active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").is_("done_at", "null").execute()
+        active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", "false").execute()
         active_projects = len(active_projects_response.data) if active_projects_response.data else 0
         
         # Completed projects

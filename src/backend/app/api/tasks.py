@@ -382,7 +382,8 @@ async def get_tasks_by_project(
 
 @router.get("/search")
 async def search_tasks(
-    query: str = Query(..., min_length=1, description="Search query"),
+    q: Optional[str] = Query(None, min_length=1, description="Search query (alias for query)"),
+    query: Optional[str] = Query(None, min_length=1, description="Search query"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum number of records to return"),
     supabase: Client = Depends(get_db)
@@ -403,7 +404,15 @@ async def search_tasks(
         settings = get_settings()
         default_user_id = settings.gtd.default_user_id
         
-        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).ilike("task_name", f"%{query}%").is_("deleted_at", "null").range(skip, skip + limit - 1).execute()
+        # Use q if provided, otherwise use query
+        search_term = q or query
+        if not search_term:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Either 'q' or 'query' parameter is required"
+            )
+        
+        result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).ilike("task_name", f"%{search_term}%").is_("deleted_at", "null").range(skip, skip + limit - 1).execute()
         
         return [{
             "id": task["id"],
