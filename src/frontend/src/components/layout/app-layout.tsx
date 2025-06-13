@@ -49,59 +49,9 @@ const navigation: NavItem[] = [
     iconSolid: HomeIconSolid,
     current: true,
   },
-  {
-    name: 'Inbox',
-    href: '#',
-    icon: InboxIcon,
-    iconSolid: InboxIconSolid,
-    current: false,
-    badge: 12,
-  },
-  {
-    name: 'Today',
-    href: '#',
-    icon: CalendarIcon,
-    iconSolid: CalendarIconSolid,
-    current: false,
-    badge: 5,
-  },
-  {
-    name: 'This Week',
-    href: '#',
-    icon: ClockIcon,
-    iconSolid: ClockIconSolid,
-    current: false,
-    badge: 8,
-  },
-  {
-    name: 'Projects',
-    href: '#',
-    icon: FolderIcon,
-    iconSolid: FolderIconSolid,
-    current: false,
-  },
 ];
 
-const secondaryNavigation = [
-  {
-    name: 'Waiting For',
-    href: '#',
-    icon: ClockIcon,
-    current: false,
-  },
-  {
-    name: 'Completed',
-    href: '#',
-    icon: CheckCircleIcon,
-    current: false,
-  },
-  {
-    name: 'Settings',
-    href: '#',
-    icon: Cog6ToothIcon,
-    current: false,
-  },
-];
+const secondaryNavigation = [];
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -238,48 +188,33 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
             </ul>
           </li>
 
-          <li>
-            <div className="text-xs font-semibold leading-6 text-muted-foreground px-2 mb-2">
-              More
-            </div>
-            <ul role="list" className="-mx-2 space-y-1">
-              {secondaryNavigation.map((item) => (
-                <li key={item.name}>
-                  <a
-                    href={item.href}
-                    onClick={onItemClick}
-                    className={cn(
-                      'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors',
-                      item.current
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    )}
-                  >
-                    <item.icon className="h-6 w-6 shrink-0" />
-                    {item.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </li>
+          {secondaryNavigation.length > 0 && (
+            <li>
+              <div className="text-xs font-semibold leading-6 text-muted-foreground px-2 mb-2">
+                More
+              </div>
+              <ul role="list" className="-mx-2 space-y-1">
+                {secondaryNavigation.map((item) => (
+                  <li key={item.name}>
+                    <a
+                      href={item.href}
+                      onClick={onItemClick}
+                      className={cn(
+                        'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors',
+                        item.current
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <item.icon className="h-6 w-6 shrink-0" />
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          )}
 
-          {/* GTD Quick Stats */}
-          <li className="mt-auto">
-            <div className="rounded-lg bg-muted p-4">
-              <div className="text-sm font-medium text-muted-foreground mb-2">
-                Today's Progress
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Completed</span>
-                  <span className="font-medium">3/8</span>
-                </div>
-                <div className="h-2 bg-background rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-3/8 rounded-full" />
-                </div>
-              </div>
-            </div>
-          </li>
         </ul>
       </nav>
     </div>
