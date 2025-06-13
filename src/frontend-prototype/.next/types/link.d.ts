@@ -30,6 +30,10 @@ declare namespace __next_route_internal_types__ {
 
   type StaticRoutes = 
     | `/`
+    | `/inbox`
+    | `/projects`
+    | `/today`
+    | `/week`
   type DynamicRoutes<T extends string = string> = 
     | `/api/${OptionalCatchAllSlug<T>}`
 

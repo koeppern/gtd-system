@@ -57,7 +57,7 @@ export function TodayTasks({ tasks, isLoading }: TodayTasksProps) {
         <CardTitle className="flex items-center">
           <ClockIcon className="mr-2 h-5 w-5 text-blue-500" />
           Today's Focus
-          {tasks.length > 0 && (
+          {tasks && tasks.length > 0 && (
             <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
               {tasks.length}
             </span>
@@ -69,7 +69,7 @@ export function TodayTasks({ tasks, isLoading }: TodayTasksProps) {
         </Button>
       </CardHeader>
       <CardContent>
-        {tasks.length === 0 ? (
+        {!tasks || tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <ClockIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-muted-foreground mb-2">
@@ -85,7 +85,7 @@ export function TodayTasks({ tasks, isLoading }: TodayTasksProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {tasks.map((task) => (
+            {tasks?.map((task) => (
               <TaskItem
                 key={task.id}
                 task={task}

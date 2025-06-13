@@ -1,9 +1,21 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { AppLayout } from '@/components/layout/app-layout';
 import { InboxItems } from '@/components/gtd/inbox-items';
 
 export default function InboxPage() {
+  const { data: inboxTasks, isLoading } = useQuery({
+    queryKey: ['tasks', 'inbox'],
+    queryFn: () => api.tasks.list({
+      limit: 50,
+      do_today: false,
+      do_this_week: false,
+      is_done: false
+    }),
+  });
+
   return (
     <AppLayout>
       <div className="py-6">
@@ -18,7 +30,7 @@ export default function InboxPage() {
           </div>
           
           <div className="mt-6">
-            <InboxItems />
+            <InboxItems tasks={inboxTasks || []} isLoading={isLoading} />
           </div>
         </div>
       </div>

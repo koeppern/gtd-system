@@ -1,9 +1,16 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { AppLayout } from '@/components/layout/app-layout';
 import { TodayTasks } from '@/components/gtd/today-tasks';
 
 export default function TodayPage() {
+  const { data: todayTasks, isLoading } = useQuery({
+    queryKey: ['tasks', 'today'],
+    queryFn: () => api.tasks.getToday(),
+  });
+
   return (
     <AppLayout>
       <div className="py-6">
@@ -18,7 +25,7 @@ export default function TodayPage() {
           </div>
           
           <div className="mt-6">
-            <TodayTasks />
+            <TodayTasks tasks={todayTasks || []} isLoading={isLoading} />
           </div>
         </div>
       </div>
