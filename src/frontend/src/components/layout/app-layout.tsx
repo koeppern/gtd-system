@@ -20,6 +20,7 @@ import {
   Bars3Icon,
   BellIcon,
   UserCircleIcon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -27,6 +28,7 @@ import {
   CalendarIcon as CalendarIconSolid,
   FolderIcon as FolderIconSolid,
   ClockIcon as ClockIconSolid,
+  ListBulletIcon as ListBulletIconSolid,
 } from '@heroicons/react/24/solid';
 
 interface AppLayoutProps {
@@ -53,6 +55,12 @@ const navigation: NavItem[] = [
     href: '/projects',
     icon: FolderIcon,
     iconSolid: FolderIconSolid,
+  },
+  {
+    name: 'Tasks',
+    href: '/tasks',
+    icon: ListBulletIcon,
+    iconSolid: ListBulletIconSolid,
   },
 ];
 
