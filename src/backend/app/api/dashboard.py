@@ -45,7 +45,7 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         total_projects = len(projects_response.data) if projects_response.data else 0
         
         # Active projects (not completed)
-        active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", "false").execute()
+        active_projects_response = supabase.table("gtd_projects").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("done_status", False).execute()
         active_projects = len(active_projects_response.data) if active_projects_response.data else 0
         
         # Completed projects
@@ -72,8 +72,8 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         tasks_week_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").eq("do_this_week", "true").execute()
         tasks_this_week = len(tasks_week_response.data) if tasks_week_response.data else 0
         
-        # Overdue tasks (due date in the past and not completed)
-        overdue_tasks_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").is_("done_at", "null").lt("due_date", today.isoformat()).execute()
+        # Overdue tasks (do_on_date in the past and not completed)
+        overdue_tasks_response = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).is_("deleted_at", "null").is_("done_at", "null").lt("do_on_date", today.isoformat()).execute()
         overdue_tasks = len(overdue_tasks_response.data) if overdue_tasks_response.data else 0
         
         # === COMPLETION RATES ===
@@ -111,7 +111,10 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
         }
         
     except Exception as e:
-        # Return default stats in case of error
+        # Log the error and return default stats
+        print(f"Dashboard API Error: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "total_projects": 0,
             "active_projects": 0,
@@ -123,5 +126,6 @@ async def get_dashboard_stats(supabase: Client = Depends(get_db)) -> Dict[str, A
             "tasks_this_week": 0,
             "overdue_tasks": 0,
             "completion_rate_7d": 0.0,
-            "completion_rate_30d": 0.0
+            "completion_rate_30d": 0.0,
+            "error": str(e)
         }
