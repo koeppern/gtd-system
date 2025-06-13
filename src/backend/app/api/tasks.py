@@ -45,8 +45,8 @@ async def get_tasks(
         settings = get_settings()
         default_user_id = settings.gtd.default_user_id
         
-        # Query tasks from Supabase
-        query = supabase.table("gtd_tasks").select("*")
+        # Query tasks from Supabase with project name JOIN
+        query = supabase.table("gtd_tasks").select("*, gtd_projects(project_name)")
         
         # Add user filter for RLS compliance
         query = query.eq("user_id", default_user_id)
@@ -115,10 +115,16 @@ async def get_tasks(
         tasks = []
         for task in result.data:
             try:
+                # Extract project name from JOIN result
+                project_name = None
+                if task.get("gtd_projects") and isinstance(task["gtd_projects"], dict):
+                    project_name = task["gtd_projects"].get("project_name")
+                
                 tasks.append({
                     "id": task.get("id"),
                     "name": task.get("task_name") or f"Task {task.get('id', 'Unknown')}",
                     "project_id": task.get("project_id"),
+                    "project_name": project_name,
                     "field_id": task.get("field_id"),
                     "done_at": task.get("done_at"),
                     "do_today": task.get("do_today", False),

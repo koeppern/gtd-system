@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { backendApi } from '@/lib/backend-client';
 
 /**
@@ -10,7 +10,7 @@ import { backendApi } from '@/lib/backend-client';
  * SECURITY: Frontend never communicates directly with Python backend.
  */
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // TODO: Server-side authentication
     // const session = await getServerSession(request);

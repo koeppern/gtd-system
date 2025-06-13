@@ -8,26 +8,19 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { 
   HomeIcon,
-  InboxIcon,
-  CalendarIcon,
   FolderIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  Cog6ToothIcon,
-  MagnifyingGlassIcon,
   SunIcon,
   MoonIcon,
   Bars3Icon,
+  ListBulletIcon,
+  MagnifyingGlassIcon,
   BellIcon,
   UserCircleIcon,
-  ListBulletIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
-  InboxIcon as InboxIconSolid,
-  CalendarIcon as CalendarIconSolid,
   FolderIcon as FolderIconSolid,
-  ClockIcon as ClockIconSolid,
   ListBulletIcon as ListBulletIconSolid,
 } from '@heroicons/react/24/solid';
 
@@ -64,7 +57,7 @@ const navigation: NavItem[] = [
   },
 ];
 
-const secondaryNavigation = [];
+const secondaryNavigation: NavItem[] = [];
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

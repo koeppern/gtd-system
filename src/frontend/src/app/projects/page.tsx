@@ -77,7 +77,7 @@ export default function ProjectsPage() {
 
         {/* Projects List */}
         <ProjectsList 
-          projects={projectsData?.items || projectsData || []} 
+          projects={Array.isArray(projectsData) ? projectsData : (projectsData?.items || [])} 
           isLoading={isLoading}
           showCompleted={showCompleted}
         />

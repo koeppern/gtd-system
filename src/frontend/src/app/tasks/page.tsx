@@ -77,7 +77,7 @@ export default function TasksPage() {
 
         {/* Tasks List */}
         <TasksList 
-          tasks={tasksData?.items || tasksData || []} 
+          tasks={Array.isArray(tasksData) ? tasksData : (tasksData?.items || [])} 
           isLoading={isLoading}
           showCompleted={showCompleted}
         />
