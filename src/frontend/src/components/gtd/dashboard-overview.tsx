@@ -39,6 +39,16 @@ export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) 
 
   const overviewCards = [
     {
+      title: 'Active Projects',
+      value: stats?.active_projects || 0,
+      description: 'not completed projects',
+      icon: FolderIcon,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      trend: '+3%',
+      trendUp: true,
+    },
+    {
       title: 'Tasks Today',
       value: stats?.tasks_today || 0,
       description: `${stats?.pending_tasks || 0} pending`,
@@ -46,16 +56,6 @@ export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) 
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       trend: '+12%',
-      trendUp: true,
-    },
-    {
-      title: 'Active Projects',
-      value: stats?.active_projects || 0,
-      description: `${stats?.total_projects || 0} total`,
-      icon: FolderIcon,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      trend: '+3%',
       trendUp: true,
     },
     {
