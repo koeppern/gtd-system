@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 interface ResizableTableProps {
   children: React.ReactNode;
@@ -14,13 +15,15 @@ interface ResizableTableProps {
     maxWidth?: number;
   }[];
   onColumnResize?: (columnKey: string, width: number) => void;
+  onColumnReorder?: (fromIndex: number, toIndex: number) => void;
 }
 
 export function ResizableTable({ 
   children, 
   className, 
   columns, 
-  onColumnResize 
+  onColumnResize,
+  onColumnReorder
 }: ResizableTableProps) {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const initialWidths: Record<string, number> = {};
@@ -34,6 +37,18 @@ export function ResizableTable({
   const tableRef = useRef<HTMLTableElement>(null);
   const startX = useRef(0);
   const startWidth = useRef(0);
+
+  const handleMoveLeft = (index: number) => {
+    if (index > 0 && onColumnReorder) {
+      onColumnReorder(index, index - 1);
+    }
+  };
+
+  const handleMoveRight = (index: number) => {
+    if (index < columns.length - 1 && onColumnReorder) {
+      onColumnReorder(index, index + 1);
+    }
+  };
 
   const handleMouseDown = (e: React.MouseEvent, columnKey: string) => {
     e.preventDefault();
@@ -109,8 +124,43 @@ export function ResizableTable({
                 key={col.key}
                 className="relative border-b border-border text-left"
               >
-                <div className="px-4 py-3">
-                  {col.title}
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {/* Move Left Arrow */}
+                    <button
+                      onClick={() => handleMoveLeft(index)}
+                      disabled={index === 0}
+                      className={cn(
+                        "p-1 rounded hover:bg-muted transition-colors",
+                        index === 0 
+                          ? "opacity-30 cursor-not-allowed" 
+                          : "opacity-60 hover:opacity-100"
+                      )}
+                      title="Move column left"
+                    >
+                      <ChevronLeftIcon className="h-3 w-3" />
+                    </button>
+                    
+                    {/* Column Title */}
+                    <div className="flex-1">
+                      {col.title}
+                    </div>
+                    
+                    {/* Move Right Arrow */}
+                    <button
+                      onClick={() => handleMoveRight(index)}
+                      disabled={index === columns.length - 1}
+                      className={cn(
+                        "p-1 rounded hover:bg-muted transition-colors",
+                        index === columns.length - 1 
+                          ? "opacity-30 cursor-not-allowed" 
+                          : "opacity-60 hover:opacity-100"
+                      )}
+                      title="Move column right"
+                    >
+                      <ChevronRightIcon className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Resize Handle */}
@@ -138,23 +188,49 @@ export function ResizableTable({
   );
 }
 
-// Hook to persist column widths in localStorage
+// Hook to persist column widths and order in localStorage
 export function useResizableColumns(tableKey: string, defaultColumns: ResizableTableProps['columns']) {
   const [columns, setColumns] = useState(defaultColumns);
 
   useEffect(() => {
-    const stored = localStorage.getItem(`table-${tableKey}-widths`);
-    if (stored) {
+    // Load stored column configuration
+    const storedWidths = localStorage.getItem(`table-${tableKey}-widths`);
+    const storedOrder = localStorage.getItem(`table-${tableKey}-order`);
+    
+    let updatedColumns = [...defaultColumns];
+    
+    // Apply stored order first
+    if (storedOrder) {
       try {
-        const widths = JSON.parse(stored);
-        setColumns(cols => cols.map(col => ({
+        const order = JSON.parse(storedOrder);
+        const orderedColumns = order
+          .map((key: string) => defaultColumns.find(col => col.key === key))
+          .filter(Boolean);
+        
+        // Add any new columns that weren't in the stored order
+        const existingKeys = new Set(order);
+        const newColumns = defaultColumns.filter(col => !existingKeys.has(col.key));
+        
+        updatedColumns = [...orderedColumns, ...newColumns];
+      } catch (e) {
+        console.warn('Failed to parse stored column order');
+      }
+    }
+    
+    // Apply stored widths
+    if (storedWidths) {
+      try {
+        const widths = JSON.parse(storedWidths);
+        updatedColumns = updatedColumns.map(col => ({
           ...col,
           width: widths[col.key] || col.width || 150
-        })));
+        }));
       } catch (e) {
         console.warn('Failed to parse stored column widths');
       }
     }
+    
+    setColumns(updatedColumns);
   }, [tableKey]);
 
   const handleColumnResize = (columnKey: string, width: number) => {
@@ -163,7 +239,7 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
     );
     setColumns(updatedColumns);
 
-    // Save to localStorage
+    // Save widths to localStorage
     const widths = updatedColumns.reduce((acc, col) => {
       acc[col.key] = col.width || 150;
       return acc;
@@ -172,5 +248,17 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
     localStorage.setItem(`table-${tableKey}-widths`, JSON.stringify(widths));
   };
 
-  return { columns, handleColumnResize };
+  const handleColumnReorder = (fromIndex: number, toIndex: number) => {
+    const newColumns = [...columns];
+    const [movedColumn] = newColumns.splice(fromIndex, 1);
+    newColumns.splice(toIndex, 0, movedColumn);
+    
+    setColumns(newColumns);
+    
+    // Save order to localStorage
+    const order = newColumns.map(col => col.key);
+    localStorage.setItem(`table-${tableKey}-order`, JSON.stringify(order));
+  };
+
+  return { columns, handleColumnResize, handleColumnReorder };
 }

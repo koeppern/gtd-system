@@ -133,7 +133,7 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
     { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
   ];
 
-  const { columns, handleColumnResize } = useResizableColumns('tasks', defaultColumns);
+  const { columns, handleColumnResize, handleColumnReorder } = useResizableColumns('tasks', defaultColumns);
 
   // Mutation for updating task name
   const updateTaskMutation = useMutation({
@@ -216,120 +216,155 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
           <ResizableTable 
             columns={columns} 
             onColumnResize={handleColumnResize}
+            onColumnReorder={handleColumnReorder}
             className="text-sm"
           >
-            {sortedTasks.map((task, index) => (
-              <tr 
-                key={task.id} 
-                className="border-b border-border hover:bg-muted/50 transition-colors"
-              >
-                <td className="py-3 px-4 text-center text-muted-foreground">
-                  {index + 1}
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-3">
-                    {isCompleted(task) ? (
-                      <CheckCircleIconSolid className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    ) : (
-                      <ListBulletIconSolid className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <InlineEdit
-                        value={task.task_name || task.name || `Task ${task.id}`}
-                        onSave={async (newValue) => {
-                          await updateTaskMutation.mutateAsync({
-                            id: task.id,
-                            data: { task_name: newValue }
-                          });
-                        }}
-                        className="font-medium text-foreground break-words"
-                        placeholder="Task name"
-                        disabled={updateTaskMutation.isPending}
-                      />
-                      <div className="flex items-center space-x-2 mt-1 flex-wrap">
-                        {task.do_today && (
-                          <Badge variant="secondary" className="text-xs">
-                            Today
-                          </Badge>
-                        )}
-                        {task.do_this_week && !task.do_today && (
-                          <Badge variant="secondary" className="text-xs">
-                            This Week
-                          </Badge>
-                        )}
-                        {task.is_reading && (
-                          <Badge variant="outline" className="text-xs">
-                            <BookOpenIcon className="h-3 w-3 mr-1" />
-                            Reading
-                          </Badge>
-                        )}
-                        {task.wait_for && (
-                          <Badge variant="outline" className="text-xs">
-                            <ClockIcon className="h-3 w-3 mr-1" />
-                            Waiting
-                          </Badge>
-                        )}
-                        {task.postponed && (
-                          <Badge variant="outline" className="text-xs">
-                            <PauseIcon className="h-3 w-3 mr-1" />
-                            Postponed
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-2">
-                    {task.project_name && (
-                      <>
-                        <FolderIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm text-muted-foreground truncate">
-                          {task.project_name}
+            {sortedTasks.map((task, index) => {
+              const renderCell = (columnKey: string) => {
+                switch (columnKey) {
+                  case 'no':
+                    return (
+                      <td key={columnKey} className="py-3 px-4 text-center text-muted-foreground">
+                        {index + 1}
+                      </td>
+                    );
+                  case 'name':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <div className="flex items-center space-x-3">
+                          {isCompleted(task) ? (
+                            <CheckCircleIconSolid className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          ) : (
+                            <ListBulletIconSolid className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <InlineEdit
+                              value={task.task_name || task.name || `Task ${task.id}`}
+                              onSave={async (newValue) => {
+                                await updateTaskMutation.mutateAsync({
+                                  id: task.id,
+                                  data: { task_name: newValue }
+                                });
+                              }}
+                              className="font-medium text-foreground break-words"
+                              placeholder="Task name"
+                              disabled={updateTaskMutation.isPending}
+                            />
+                            <div className="flex items-center space-x-2 mt-1 flex-wrap">
+                              {task.do_today && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Today
+                                </Badge>
+                              )}
+                              {task.do_this_week && !task.do_today && (
+                                <Badge variant="secondary" className="text-xs">
+                                  This Week
+                                </Badge>
+                              )}
+                              {task.is_reading && (
+                                <Badge variant="outline" className="text-xs">
+                                  <BookOpenIcon className="h-3 w-3 mr-1" />
+                                  Reading
+                                </Badge>
+                              )}
+                              {task.wait_for && (
+                                <Badge variant="outline" className="text-xs">
+                                  <ClockIcon className="h-3 w-3 mr-1" />
+                                  Waiting
+                                </Badge>
+                              )}
+                              {task.postponed && (
+                                <Badge variant="outline" className="text-xs">
+                                  <PauseIcon className="h-3 w-3 mr-1" />
+                                  Postponed
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    );
+                  case 'project':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <div className="flex items-center space-x-2">
+                          {task.project_name && (
+                            <>
+                              <FolderIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm text-muted-foreground truncate">
+                                {task.project_name}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  case 'status':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          {isCompleted(task) ? (
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                              Completed
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  case 'priority':
+                    return (
+                      <td key={columnKey} className="py-3 px-4 text-center">
+                        <span className="text-sm font-medium">
+                          {task.priority || 0}
                         </span>
-                      </>
-                    )}
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-2 flex-wrap">
-                    {isCompleted(task) ? (
-                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                        Completed
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <span className="text-sm font-medium">
-                    {task.priority || 0}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(task.created_at).toLocaleDateString()}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(task.updated_at).toLocaleDateString()}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
-                  >
-                    <EllipsisVerticalIcon className="h-4 w-4" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
+                      </td>
+                    );
+                  case 'created':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(task.created_at).toLocaleDateString()}
+                        </span>
+                      </td>
+                    );
+                  case 'updated':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(task.updated_at).toLocaleDateString()}
+                        </span>
+                      </td>
+                    );
+                  case 'actions':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
+                        >
+                          <EllipsisVerticalIcon className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    );
+                  default:
+                    return <td key={columnKey} className="py-3 px-4"></td>;
+                }
+              };
+
+              return (
+                <tr 
+                  key={task.id} 
+                  className="border-b border-border hover:bg-muted/50 transition-colors"
+                >
+                  {columns.map((col) => renderCell(col.key))}
+                </tr>
+              );
+            })}
           </ResizableTable>
         </CardContent>
       </Card>

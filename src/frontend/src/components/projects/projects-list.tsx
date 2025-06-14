@@ -112,7 +112,7 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
     { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
   ];
 
-  const { columns, handleColumnResize } = useResizableColumns('projects', defaultColumns);
+  const { columns, handleColumnResize, handleColumnReorder } = useResizableColumns('projects', defaultColumns);
 
   // Mutation for updating project name
   const updateProjectMutation = useMutation({
@@ -227,85 +227,117 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
           <ResizableTable 
             columns={columns} 
             onColumnResize={handleColumnResize}
+            onColumnReorder={handleColumnReorder}
             className="text-sm"
           >
-            {sortedProjects.map((project, index) => (
-              <tr 
-                key={project.id} 
-                className="border-b border-border hover:bg-muted/50 transition-colors"
-              >
-                <td className="py-3 px-4 text-center text-muted-foreground">
-                  {index + 1}
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-3">
-                    {isCompleted(project) ? (
-                      <CheckCircleIconSolid className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    ) : (
-                      <FolderIconSolid className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <InlineEdit
-                        value={project.project_name || project.name || `Project ${project.id}`}
-                        onSave={async (newValue) => {
-                          await updateProjectMutation.mutateAsync({
-                            id: project.id,
-                            data: { project_name: newValue }
-                          });
-                        }}
-                        className="font-medium text-foreground break-words"
-                        placeholder="Project name"
-                        disabled={updateProjectMutation.isPending}
-                      />
-                      {project.do_this_week && (
-                        <div className="mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            This Week
-                          </Badge>
+            {sortedProjects.map((project, index) => {
+              const renderCell = (columnKey: string) => {
+                switch (columnKey) {
+                  case 'no':
+                    return (
+                      <td key={columnKey} className="py-3 px-4 text-center text-muted-foreground">
+                        {index + 1}
+                      </td>
+                    );
+                  case 'name':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <div className="flex items-center space-x-3">
+                          {isCompleted(project) ? (
+                            <CheckCircleIconSolid className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          ) : (
+                            <FolderIconSolid className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <InlineEdit
+                              value={project.project_name || project.name || `Project ${project.id}`}
+                              onSave={async (newValue) => {
+                                await updateProjectMutation.mutateAsync({
+                                  id: project.id,
+                                  data: { project_name: newValue }
+                                });
+                              }}
+                              className="font-medium text-foreground break-words"
+                              placeholder="Project name"
+                              disabled={updateProjectMutation.isPending}
+                            />
+                            {project.do_this_week && (
+                              <div className="mt-1">
+                                <Badge variant="secondary" className="text-xs">
+                                  This Week
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-2 flex-wrap">
-                    {isCompleted(project) ? (
-                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                        Completed
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <span className="text-sm font-medium">
-                    {project.task_count || 0}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(project.created_at).toLocaleDateString()}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(project.updated_at).toLocaleDateString()}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
-                  >
-                    <EllipsisVerticalIcon className="h-4 w-4" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
+                      </td>
+                    );
+                  case 'status':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          {isCompleted(project) ? (
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                              Completed
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  case 'tasks':
+                    return (
+                      <td key={columnKey} className="py-3 px-4 text-center">
+                        <span className="text-sm font-medium">
+                          {project.task_count || 0}
+                        </span>
+                      </td>
+                    );
+                  case 'created':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(project.created_at).toLocaleDateString()}
+                        </span>
+                      </td>
+                    );
+                  case 'updated':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(project.updated_at).toLocaleDateString()}
+                        </span>
+                      </td>
+                    );
+                  case 'actions':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
+                        >
+                          <EllipsisVerticalIcon className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    );
+                  default:
+                    return <td key={columnKey} className="py-3 px-4"></td>;
+                }
+              };
+
+              return (
+                <tr 
+                  key={project.id} 
+                  className="border-b border-border hover:bg-muted/50 transition-colors"
+                >
+                  {columns.map((col) => renderCell(col.key))}
+                </tr>
+              );
+            })}
           </ResizableTable>
         </CardContent>
       </Card>
