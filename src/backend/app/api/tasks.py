@@ -4,12 +4,26 @@ Task API endpoints with Supabase direct connection
 from typing import List, Optional
 from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from pydantic import BaseModel
 from supabase import Client
 
 from app.database import get_db
 from app.config import get_settings
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+class TaskUpdate(BaseModel):
+    task_name: Optional[str] = None
+    done_at: Optional[str] = None
+    do_today: Optional[bool] = None
+    do_this_week: Optional[bool] = None
+    is_reading: Optional[bool] = None
+    wait_for: Optional[bool] = None
+    postponed: Optional[bool] = None
+    reviewed: Optional[bool] = None
+    priority: Optional[int] = None
+    project_id: Optional[int] = None
 
 
 @router.get("/")
@@ -646,4 +660,116 @@ async def delete_task(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete task: {str(e)}"
+        )
+
+
+@router.put("/{task_id}")
+async def update_task(
+    task_id: int,
+    task_update: TaskUpdate,
+    supabase: Client = Depends(get_db)
+) -> dict:
+    """
+    Update a task
+    
+    Args:
+        task_id: Task ID
+        task_update: Task update data
+        
+    Returns:
+        dict: Updated task data
+    """
+    try:
+        # Get default user ID for RLS compliance
+        settings = get_settings()
+        default_user_id = settings.gtd.default_user_id
+        
+        # Check if task exists
+        task_result = supabase.table("gtd_tasks").select("*").eq("user_id", default_user_id).eq("id", task_id).is_("deleted_at", "null").execute()
+        
+        if not task_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        # Prepare update data - only include fields that are not None
+        update_data = {}
+        if task_update.task_name is not None:
+            update_data["task_name"] = task_update.task_name
+        if task_update.done_at is not None:
+            update_data["done_at"] = task_update.done_at
+        if task_update.do_today is not None:
+            update_data["do_today"] = task_update.do_today
+        if task_update.do_this_week is not None:
+            update_data["do_this_week"] = task_update.do_this_week
+        if task_update.is_reading is not None:
+            update_data["is_reading"] = task_update.is_reading
+        if task_update.wait_for is not None:
+            update_data["wait_for"] = task_update.wait_for
+        if task_update.postponed is not None:
+            update_data["postponed"] = task_update.postponed
+        if task_update.reviewed is not None:
+            update_data["reviewed"] = task_update.reviewed
+        if task_update.priority is not None:
+            update_data["priority"] = task_update.priority
+        if task_update.project_id is not None:
+            update_data["project_id"] = task_update.project_id
+        
+        if not update_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid fields to update"
+            )
+        
+        # Perform update
+        result = supabase.table("gtd_tasks").update(update_data).eq("id", task_id).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update task"
+            )
+        
+        # Get updated task with project name JOIN
+        updated_task_result = supabase.table("gtd_tasks").select("*, gtd_projects(project_name)").eq("id", task_id).execute()
+        
+        if not updated_task_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to fetch updated task"
+            )
+        
+        updated_task = updated_task_result.data[0]
+        
+        # Extract project name from JOIN result
+        project_name = None
+        if updated_task.get("gtd_projects") and isinstance(updated_task["gtd_projects"], dict):
+            project_name = updated_task["gtd_projects"].get("project_name")
+        
+        return {
+            "id": updated_task["id"],
+            "name": updated_task["task_name"] or f"Task {updated_task['id']}",
+            "task_name": updated_task["task_name"],
+            "project_id": updated_task["project_id"],
+            "project_name": project_name,
+            "field_id": updated_task["field_id"],
+            "done_at": updated_task["done_at"],
+            "do_today": updated_task["do_today"],
+            "do_this_week": updated_task["do_this_week"],
+            "is_reading": updated_task["is_reading"],
+            "wait_for": updated_task["wait_for"],
+            "postponed": updated_task["postponed"],
+            "reviewed": updated_task["reviewed"],
+            "priority": updated_task["priority"],
+            "created_at": updated_task["created_at"],
+            "updated_at": updated_task["updated_at"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update task: {str(e)}"
         )

@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { InlineEdit } from '@/components/ui/inline-edit';
+import { api } from '@/lib/api';
 import { 
   FolderIcon,
   CheckCircleIcon,
@@ -37,6 +40,21 @@ interface ProjectsListProps {
 export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsListProps) {
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'tasks' | 'created' | 'updated'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const queryClient = useQueryClient();
+
+  // Mutation for updating project name
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return api.projects.update(id, data);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch projects list
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update project:', error);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -220,10 +238,19 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                         ) : (
                           <FolderIconSolid className="h-5 w-5 text-blue-600" />
                         )}
-                        <div>
-                          <div className="font-medium text-foreground">
-                            {project.project_name || project.name || `Project ${project.id}`}
-                          </div>
+                        <div className="flex-1">
+                          <InlineEdit
+                            value={project.project_name || project.name || `Project ${project.id}`}
+                            onSave={async (newValue) => {
+                              await updateProjectMutation.mutateAsync({
+                                id: project.id,
+                                data: { project_name: newValue }
+                              });
+                            }}
+                            className="font-medium text-foreground"
+                            placeholder="Project name"
+                            disabled={updateProjectMutation.isPending}
+                          />
                           {project.do_this_week && (
                             <Badge variant="secondary" className="text-xs mt-1">
                               This Week

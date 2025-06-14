@@ -2,12 +2,21 @@
 Project API endpoints with Supabase direct connection
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from pydantic import BaseModel
 from supabase import Client
 
 from app.database import get_db
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+class ProjectUpdate(BaseModel):
+    project_name: Optional[str] = None
+    done_status: Optional[bool] = None
+    do_this_week: Optional[bool] = None
+    keywords: Optional[str] = None
+    readings: Optional[str] = None
 
 
 @router.get("/")
@@ -213,4 +222,91 @@ async def get_project(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch project: {str(e)}"
+        )
+
+
+@router.put("/{project_id}")
+async def update_project(
+    project_id: int,
+    project_update: ProjectUpdate,
+    supabase: Client = Depends(get_db)
+) -> dict:
+    """
+    Update a project
+    
+    Args:
+        project_id: Project ID
+        project_update: Project update data
+        
+    Returns:
+        dict: Updated project data
+    """
+    try:
+        # Check if project exists
+        project_result = supabase.table("gtd_projects").select("*").eq("id", project_id).is_("deleted_at", "null").execute()
+        
+        if not project_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        # Prepare update data - only include fields that are not None
+        update_data = {}
+        if project_update.project_name is not None:
+            update_data["project_name"] = project_update.project_name
+        if project_update.done_status is not None:
+            update_data["done_status"] = project_update.done_status
+        if project_update.do_this_week is not None:
+            update_data["do_this_week"] = project_update.do_this_week
+        if project_update.keywords is not None:
+            update_data["keywords"] = project_update.keywords
+        if project_update.readings is not None:
+            update_data["readings"] = project_update.readings
+        
+        if not update_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid fields to update"
+            )
+        
+        # Perform update
+        result = supabase.table("gtd_projects").update(update_data).eq("id", project_id).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update project"
+            )
+        
+        updated_project = result.data[0]
+        
+        # Count tasks for this project
+        task_count_result = supabase.table("gtd_tasks").select("id", count="exact") \
+            .eq("project_id", project_id) \
+            .is_("deleted_at", "null") \
+            .execute()
+        
+        task_count = task_count_result.count if task_count_result.count is not None else 0
+        
+        return {
+            "id": updated_project["id"],
+            "name": updated_project["project_name"] or f"Project {updated_project['id']}",
+            "project_name": updated_project["project_name"],
+            "field_id": updated_project["field_id"],
+            "done_status": updated_project["done_status"],
+            "do_this_week": updated_project["do_this_week"],
+            "keywords": updated_project["keywords"],
+            "readings": updated_project["readings"],
+            "task_count": task_count,
+            "created_at": updated_project["created_at"],
+            "updated_at": updated_project["updated_at"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update project: {str(e)}"
         )

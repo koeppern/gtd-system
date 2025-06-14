@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { InlineEdit } from '@/components/ui/inline-edit';
+import { api } from '@/lib/api';
 import { 
   CheckCircleIcon,
   ClockIcon,
@@ -48,6 +51,21 @@ interface TasksListProps {
 export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
   const [sortBy, setSortBy] = useState<'name' | 'project' | 'priority' | 'created' | 'updated'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const queryClient = useQueryClient();
+
+  // Mutation for updating task name
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return api.tasks.update(id, data);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch tasks list
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update task:', error);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -234,10 +252,19 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
                         ) : (
                           <ListBulletIconSolid className="h-5 w-5 text-blue-600" />
                         )}
-                        <div>
-                          <div className="font-medium text-foreground">
-                            {task.task_name || task.name || `Task ${task.id}`}
-                          </div>
+                        <div className="flex-1">
+                          <InlineEdit
+                            value={task.task_name || task.name || `Task ${task.id}`}
+                            onSave={async (newValue) => {
+                              await updateTaskMutation.mutateAsync({
+                                id: task.id,
+                                data: { task_name: newValue }
+                              });
+                            }}
+                            className="font-medium text-foreground"
+                            placeholder="Task name"
+                            disabled={updateTaskMutation.isPending}
+                          />
                           <div className="flex items-center space-x-2 mt-1">
                             {task.do_today && (
                               <Badge variant="secondary" className="text-xs">
