@@ -219,11 +219,11 @@ export const useFieldMutations = () => {
   };
 };
 
-// User Settings Mutations
+// User Settings Mutations (Device-specific)
 export const useUserSettingsMutations = () => {
   const updateSetting = useMutation({
-    mutationFn: ({ key, value }: { key: string; value: any }) => 
-      api.userSettings.update(key, value),
+    mutationFn: ({ device, key, value }: { device: 'desktop' | 'tablet' | 'phone'; key: string; value: any }) => 
+      api.userSettings.update(device, key, value),
     onSuccess: (_, { key }) => {
       cacheInvalidator.invalidateUserSettings(key, 'immediate');
     },
@@ -233,20 +233,48 @@ export const useUserSettingsMutations = () => {
     },
   });
 
+  const updateDeviceSettings = useMutation({
+    mutationFn: ({ device, settings }: { device: 'desktop' | 'tablet' | 'phone'; settings: Record<string, any> }) => 
+      api.userSettings.updateDevice(device, settings),
+    onSuccess: () => {
+      toast.success('Settings saved successfully');
+      cacheInvalidator.invalidateUserSettings(undefined, 'immediate');
+    },
+    onError: (error) => {
+      toast.error('Failed to save settings');
+      console.error('Update device settings error:', error);
+    },
+  });
+
   const deleteSetting = useMutation({
-    mutationFn: (key: string) => api.userSettings.delete(key),
-    onSuccess: (_, key) => {
-      toast.success('Setting deleted successfully');
+    mutationFn: ({ device, key }: { device: 'desktop' | 'tablet' | 'phone'; key: string }) => 
+      api.userSettings.delete(device, key),
+    onSuccess: (_, { key }) => {
+      toast.success('Setting reset to default');
       cacheInvalidator.invalidateUserSettings(key, 'immediate');
     },
     onError: (error) => {
-      toast.error('Failed to delete setting');
+      toast.error('Failed to reset setting');
       console.error('Delete setting error:', error);
+    },
+  });
+
+  const resetAllSettings = useMutation({
+    mutationFn: () => api.userSettings.reset(),
+    onSuccess: () => {
+      toast.success('All settings reset to defaults');
+      cacheInvalidator.invalidateUserSettings(undefined, 'immediate');
+    },
+    onError: (error) => {
+      toast.error('Failed to reset settings');
+      console.error('Reset settings error:', error);
     },
   });
 
   return {
     updateSetting,
+    updateDeviceSettings,
     deleteSetting,
+    resetAllSettings,
   };
 };

@@ -233,20 +233,23 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
   const [columns, setColumns] = useState(defaultColumns);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Import api dynamically to avoid circular imports
+  // Import dependencies dynamically to avoid circular imports
   const loadSettings = async () => {
     try {
       const { api } = await import('@/lib/api');
+      const { detectDeviceType } = await import('@/lib/device-utils');
+      
+      const device = detectDeviceType();
       
       // Load stored column configuration from database
       const [widthsSetting, orderSetting] = await Promise.all([
-        api.userSettings.get(`table-${tableKey}-widths`).catch(() => null),
-        api.userSettings.get(`table-${tableKey}-order`).catch(() => null)
+        api.userSettings.get(device, `${tableKey}_table_column_widths`).catch(() => null),
+        api.userSettings.get(device, `${tableKey}_table_columns`).catch(() => null)
       ]);
       
       let updatedColumns = [...defaultColumns];
       
-      // Apply stored order first
+      // Apply stored order first (orderSetting is array of column keys)
       if (orderSetting && Array.isArray(orderSetting)) {
         try {
           const orderedColumns = orderSetting
@@ -263,7 +266,7 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
         }
       }
       
-      // Apply stored widths
+      // Apply stored widths (widthsSetting is object with key->width mapping)
       if (widthsSetting && typeof widthsSetting === 'object') {
         try {
           updatedColumns = updatedColumns.map(col => ({
@@ -302,7 +305,10 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
     
     try {
       const { api } = await import('@/lib/api');
-      await api.userSettings.update(`table-${tableKey}-widths`, widths);
+      const { detectDeviceType } = await import('@/lib/device-utils');
+      
+      const device = detectDeviceType();
+      await api.userSettings.update(device, `${tableKey}_table_column_widths`, widths);
     } catch (error) {
       console.error('Failed to save column widths to database:', error);
       // Show user error instead of silent fallback
@@ -322,7 +328,10 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
     
     try {
       const { api } = await import('@/lib/api');
-      await api.userSettings.update(`table-${tableKey}-order`, order);
+      const { detectDeviceType } = await import('@/lib/device-utils');
+      
+      const device = detectDeviceType();
+      await api.userSettings.update(device, `${tableKey}_table_columns`, order);
     } catch (error) {
       console.error('Failed to save column order to database:', error);
       // Show user error instead of silent fallback
