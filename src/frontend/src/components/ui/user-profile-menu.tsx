@@ -20,11 +20,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
-  UserCircleIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
   EnvelopeIcon,
 } from '@heroicons/react/24/outline';
+import { 
+  UserCircleIcon as UserCircleIconSolid 
+} from '@heroicons/react/24/solid';
 
 interface User {
   id: string;
@@ -78,13 +80,13 @@ export function UserProfileMenu({
     return (
       <>
         <Button 
-          variant="ghost" 
-          size="icon"
+          variant="default"
+          size="sm"
           onClick={() => setShowLoginDialog(true)}
           disabled={isLoading}
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          <UserCircleIcon className="h-6 w-6" />
-          <span className="sr-only">Sign in</span>
+          Login
         </Button>
 
         <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
@@ -154,7 +156,7 @@ export function UserProfileMenu({
               className="h-6 w-6 rounded-full"
             />
           ) : (
-            <UserCircleIcon className="h-6 w-6" />
+            <UserCircleIconSolid className="h-6 w-6" />
           )}
           <span className="sr-only">User menu</span>
         </Button>
