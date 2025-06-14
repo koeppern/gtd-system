@@ -123,5 +123,35 @@ echo -e "${BLUE}📡 Backend API endpoint: http://localhost:8000/api${NC}"
 echo -e "${YELLOW}💡 Press Ctrl+C to stop the server${NC}"
 echo ""
 
-# Execute the start command
-exec $START_COMMAND
+# Function to open browser in Windows
+open_browser() {
+    local url=$1
+    local browser_path="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+    
+    if [ -f "$browser_path" ]; then
+        echo -e "${GREEN}🌐 Opening $url in Brave browser...${NC}"
+        "$browser_path" "$url" &
+    else
+        echo -e "${YELLOW}⚠️  Brave browser not found at expected location${NC}"
+        echo -e "${YELLOW}💡 Please open $url manually in your browser${NC}"
+    fi
+}
+
+# Start the server in background and wait for it to be ready
+echo -e "${BLUE}🚀 Starting server...${NC}"
+$START_COMMAND &
+SERVER_PID=$!
+
+# Wait for the server to start (check every 2 seconds, max 30 seconds)
+echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
+for i in {1..15}; do
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Server is ready!${NC}"
+        open_browser "http://localhost:3000"
+        break
+    fi
+    sleep 2
+done
+
+# Keep the script running to show server output
+wait $SERVER_PID
