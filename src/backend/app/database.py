@@ -57,6 +57,9 @@ def get_db_connection():
     # Get connection details from environment variables
     database_url = os.getenv("DATABASE_URL")
     if database_url:
+        # Convert asyncpg URL to psycopg2 format
+        if database_url.startswith("postgresql+asyncpg://"):
+            database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
         return psycopg2.connect(database_url)
     
     # Fallback to individual environment variables
@@ -70,12 +73,11 @@ def get_db_connection():
     # Format: https://project.supabase.co
     project_id = supabase_url.replace("https://", "").replace(".supabase.co", "")
     
-    # Build PostgreSQL connection string
-    # Note: This is a simplified approach - you might need to adjust based on your actual Supabase setup
-    host = f"db.{project_id}.supabase.co"
+    # Build PostgreSQL connection string for Supabase pooler
+    host = f"aws-0-us-east-1.pooler.supabase.com"
     database = "postgres"
-    user = "postgres"
-    password = service_key  # This might not be correct - adjust based on your setup
+    user = f"postgres.{project_id}"
+    password = service_key
     
     return psycopg2.connect(
         host=host,

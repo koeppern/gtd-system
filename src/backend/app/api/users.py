@@ -1,8 +1,9 @@
 """
 User API endpoints with device-specific settings support
 """
-from fastapi import APIRouter, HTTPException, Body, Query
-from app.database import get_db_connection
+from fastapi import APIRouter, HTTPException, Body, Query, Depends
+from app.database import get_supabase_client
+from supabase import Client
 import json
 from typing import Dict, Any, Optional, Literal
 import logging
@@ -20,7 +21,8 @@ async def get_current_user_info() -> dict:
 @router.get("/me/settings")
 async def get_user_settings(
     user_id: str = "00000000-0000-0000-0000-000000000001",
-    device: Optional[DeviceType] = None
+    device: Optional[DeviceType] = None,
+    supabase: Client = Depends(get_supabase_client)
 ) -> Dict[str, Any]:
     """
     Get user settings. 
@@ -28,41 +30,31 @@ async def get_user_settings(
     If device is not specified, returns the full settings_json structure.
     """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
         if device:
-            # Get settings for specific device with fallback to defaults
-            cursor.execute("""
-                SELECT get_user_setting(%s, %s, key) as setting_value, key
-                FROM gtd_setting_keys
-                ORDER BY category, key
-            """, (user_id, device))
+            # Get all setting keys
+            setting_keys_result = supabase.table("gtd_setting_keys").select("key, default_value").execute()
             
-            results = cursor.fetchall()
+            # Get user settings
+            user_settings_result = supabase.table("gtd_user_settings").select("settings_json").eq("user_id", user_id).execute()
             
-            # Convert to dictionary
+            user_device_settings = {}
+            if user_settings_result.data:
+                settings_json = user_settings_result.data[0].get("settings_json", {})
+                user_device_settings = settings_json.get(device, {})
+            
+            # Merge with defaults
             settings = {}
-            for setting_value, key in results:
-                # Parse JSONB value
-                if setting_value is not None:
-                    try:
-                        settings[key] = json.loads(setting_value) if isinstance(setting_value, str) else setting_value
-                    except (json.JSONDecodeError, TypeError):
-                        settings[key] = setting_value
+            for setting_key_info in setting_keys_result.data:
+                key = setting_key_info["key"]
+                default_value = setting_key_info["default_value"]
+                settings[key] = user_device_settings.get(key, default_value)
                         
         else:
             # Get full settings structure
-            cursor.execute("""
-                SELECT settings_json 
-                FROM gtd_user_settings 
-                WHERE user_id = %s
-            """, (user_id,))
+            user_settings_result = supabase.table("gtd_user_settings").select("settings_json").eq("user_id", user_id).execute()
             
-            result = cursor.fetchone()
-            
-            if result and result[0]:
-                settings = result[0]
+            if user_settings_result.data and user_settings_result.data[0].get("settings_json"):
+                settings = user_settings_result.data[0]["settings_json"]
             else:
                 # Return empty structure if no settings exist
                 settings = {
@@ -70,9 +62,6 @@ async def get_user_settings(
                     "tablet": {},
                     "phone": {}
                 }
-            
-        cursor.close()
-        conn.close()
         
         logger.info(f"Retrieved settings for user {user_id}, device: {device}")
         return settings
@@ -82,39 +71,30 @@ async def get_user_settings(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/me/settings/keys")
-async def get_available_setting_keys() -> Dict[str, Any]:
+async def get_available_setting_keys(
+    supabase: Client = Depends(get_supabase_client)
+) -> Dict[str, Any]:
     """Get all available setting keys with their metadata"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT key, description, data_type, default_value, category
-            FROM gtd_setting_keys
-            ORDER BY category, key
-        """)
-        
-        results = cursor.fetchall()
+        result = supabase.table("gtd_setting_keys").select("key, description, data_type, default_value, category").order("category, key").execute()
         
         # Group by category
         keys_by_category = {}
-        for key, description, data_type, default_value, category in results:
+        for item in result.data:
+            category = item["category"]
             if category not in keys_by_category:
                 keys_by_category[category] = []
                 
             keys_by_category[category].append({
-                "key": key,
-                "description": description,
-                "data_type": data_type,
-                "default_value": default_value
+                "key": item["key"],
+                "description": item["description"],
+                "data_type": item["data_type"],
+                "default_value": item["default_value"]
             })
-            
-        cursor.close()
-        conn.close()
         
         return {
             "categories": keys_by_category,
-            "total_keys": len(results)
+            "total_keys": len(result.data)
         }
         
     except Exception as e:
@@ -125,33 +105,31 @@ async def get_available_setting_keys() -> Dict[str, Any]:
 async def get_user_setting(
     device: DeviceType,
     setting_key: str, 
-    user_id: str = "00000000-0000-0000-0000-000000000001"
+    user_id: str = "00000000-0000-0000-0000-000000000001",
+    supabase: Client = Depends(get_supabase_client)
 ) -> Dict[str, Any]:
     """Get a specific user setting for a device"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # First, check if the setting key exists
+        setting_key_result = supabase.table("gtd_setting_keys").select("*").eq("key", setting_key).execute()
         
-        # Use helper function to get setting with fallback to default
-        cursor.execute("""
-            SELECT get_user_setting(%s, %s, %s) as setting_value
-        """, (user_id, device, setting_key))
+        if not setting_key_result.data:
+            raise HTTPException(status_code=404, detail=f"Setting key '{setting_key}' not found")
         
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        setting_key_info = setting_key_result.data[0]
+        default_value = setting_key_info.get("default_value")
         
-        if result is None or result[0] is None:
-            raise HTTPException(status_code=404, detail=f"Setting '{setting_key}' not found for device '{device}'")
-            
-        # Parse JSONB value
-        setting_value = result[0]
-        if isinstance(setting_value, str):
-            try:
-                setting_value = json.loads(setting_value)
-            except json.JSONDecodeError:
-                pass
-                
+        # Get user settings
+        user_settings_result = supabase.table("gtd_user_settings").select("settings_json").eq("user_id", user_id).execute()
+        
+        setting_value = default_value  # Default fallback
+        
+        if user_settings_result.data:
+            settings_json = user_settings_result.data[0].get("settings_json", {})
+            device_settings = settings_json.get(device, {})
+            if setting_key in device_settings:
+                setting_value = device_settings[setting_key]
+        
         return {
             "device": device,
             "setting_key": setting_key,
