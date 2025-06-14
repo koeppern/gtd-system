@@ -7,6 +7,7 @@ interface User {
   email: string;
   name?: string;
   avatar_url?: string;
+  loginTime?: string; // Zeitstempel der Anmeldung
 }
 
 interface AuthContextType {
@@ -42,14 +43,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkSession = async () => {
     try {
-      // For now, simulate checking for a stored session
-      // In a real implementation, this would check Supabase session
+      // Check for stored session in localStorage
       const storedUser = localStorage.getItem('gtd_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      const storedSession = localStorage.getItem('gtd_session');
+      
+      if (storedUser && storedSession) {
+        const user = JSON.parse(storedUser);
+        const sessionData = JSON.parse(storedSession);
+        
+        // Check if session is still valid (optional: add expiration check)
+        const isValidSession = sessionData.isActive && sessionData.loginTime;
+        
+        if (isValidSession) {
+          console.log('Restoring user session from localStorage');
+          setUser(user);
+        } else {
+          // Clean up invalid session
+          localStorage.removeItem('gtd_user');
+          localStorage.removeItem('gtd_session');
+        }
       }
     } catch (error) {
       console.error('Session check failed:', error);
+      // Clean up potentially corrupted data
+      localStorage.removeItem('gtd_user');
+      localStorage.removeItem('gtd_session');
     } finally {
       setIsLoading(false);
     }
@@ -60,14 +78,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       // TODO: Implement actual Supabase authentication
       // For now, simulate successful login
+      const loginTime = new Date().toISOString();
       const mockUser: User = {
         id: '1',
         email,
         name: email.split('@')[0], // Use email prefix as name
+        loginTime,
+      };
+      
+      // Store user data and session info for persistence
+      const sessionData = {
+        isActive: true,
+        loginTime,
+        userId: mockUser.id,
       };
       
       setUser(mockUser);
       localStorage.setItem('gtd_user', JSON.stringify(mockUser));
+      localStorage.setItem('gtd_session', JSON.stringify(sessionData));
+      
+      console.log('User logged in and session saved to localStorage');
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -84,7 +114,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       // TODO: Implement actual Supabase sign out
       setUser(null);
+      
+      // Clear all session data from localStorage
       localStorage.removeItem('gtd_user');
+      localStorage.removeItem('gtd_session');
+      
+      console.log('User logged out and session cleared from localStorage');
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -100,14 +135,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
     try {
       // TODO: Implement actual Supabase sign up
+      const loginTime = new Date().toISOString();
       const mockUser: User = {
         id: Date.now().toString(),
         email,
         name: name || email.split('@')[0],
+        loginTime,
+      };
+      
+      // Store user data and session info for persistence
+      const sessionData = {
+        isActive: true,
+        loginTime,
+        userId: mockUser.id,
       };
       
       setUser(mockUser);
       localStorage.setItem('gtd_user', JSON.stringify(mockUser));
+      localStorage.setItem('gtd_session', JSON.stringify(sessionData));
+      
+      console.log('User signed up and session saved to localStorage');
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
