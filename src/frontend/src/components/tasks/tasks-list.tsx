@@ -146,7 +146,7 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
     { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
   ];
 
-  const { columns, handleColumnResize, handleColumnReorder } = useResizableColumns('tasks', defaultColumns);
+  const { columns, handleColumnResize, handleColumnReorder, isLoading: columnsLoading } = useResizableColumns('tasks', defaultColumns);
 
   // Mutation for updating task name
   const updateTaskMutation = useMutation({
@@ -219,9 +219,7 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
     }
   };
 
-  // Group tasks if groupBy is selected
-  const groupedTasks = useGroupBy(sortedTasks, groupBy, getGroupValue);
-
+  // Helper functions
   const isCompleted = (task: Task) => {
     return task.done_at !== null;
   };
@@ -234,6 +232,9 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
       return dateString; // fallback to original string if parsing fails
     }
   };
+
+  // Group tasks if groupBy is selected
+  const groupedTasks = useGroupBy(sortedTasks, groupBy, getGroupValue);
 
   if (tasks.length === 0) {
     return (
