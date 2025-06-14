@@ -1,6 +1,0 @@
-- git commit after each finished claude code task given by user
-- don't build any sqlite fallback database be treat an unreacheable supabase db gracefully
-- All source code is withnin folder `src` and subfolders in there
-- Config data like settings, variables, prompts are stored in (yaml) files in folder `config`
-- Never code values hard into source code file but rather load them from separate config file or even from env vars (mybe youÄll need to load .env first)
-- always create sensible tests and run them
