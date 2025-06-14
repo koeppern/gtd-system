@@ -17,6 +17,8 @@ import {
   BellIcon,
   UserCircleIcon,
   CheckCircleIcon,
+  ChevronDoubleRightIcon,
+  ChevronDoubleLeftIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -61,6 +63,7 @@ const secondaryNavigation: NavItem[] = [];
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
 
@@ -73,17 +76,32 @@ export function AppLayout({ children }: AppLayoutProps) {
       )}>
         <div className="fixed inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r border-border">
-          <SidebarContent onItemClick={() => setSidebarOpen(false)} pathname={pathname} />
+          <SidebarContent 
+            onItemClick={() => setSidebarOpen(false)} 
+            pathname={pathname} 
+            collapsed={false}
+            onToggleCollapse={() => {}}
+          />
         </div>
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:block lg:w-64 lg:bg-background lg:border-r lg:border-border">
-        <SidebarContent pathname={pathname} />
+      <div className={cn(
+        "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:block lg:bg-background lg:border-r lg:border-border transition-all duration-300 ease-in-out",
+        sidebarCollapsed ? "lg:w-16" : "lg:w-64"
+      )}>
+        <SidebarContent 
+          pathname={pathname} 
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={cn(
+        "transition-all duration-300 ease-in-out",
+        sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
+      )}>
         {/* Top navigation */}
         <div className="sticky top-0 z-30 flex h-16 items-center gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:gap-x-6 sm:px-6">
           <Button
@@ -144,24 +162,59 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 }
 
-function SidebarContent({ onItemClick, pathname }: { onItemClick?: () => void; pathname: string }) {
+function SidebarContent({ 
+  onItemClick, 
+  pathname,
+  collapsed = false,
+  onToggleCollapse
+}: { 
+  onItemClick?: () => void; 
+  pathname: string; 
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}) {
   return (
     <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center px-6">
+      {/* Logo and Toggle */}
+      <div className="flex h-16 shrink-0 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <CheckCircleIcon className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold">GTD</span>
+          {!collapsed && <span className="text-xl font-bold">GTD</span>}
         </div>
+        
+        {/* Toggle Button */}
+        {onToggleCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="h-8 w-8 hover:bg-accent"
+          >
+            {collapsed ? (
+              <ChevronDoubleRightIcon className="h-4 w-4" />
+            ) : (
+              <ChevronDoubleLeftIcon className="h-4 w-4" />
+            )}
+            <span className="sr-only">
+              {collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            </span>
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col px-4">
+      <nav className={cn(
+        "flex flex-1 flex-col transition-all duration-300",
+        collapsed ? "px-2" : "px-4"
+      )}>
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
           <li>
-            <ul role="list" className="-mx-2 space-y-1">
+            <ul role="list" className={cn(
+              "space-y-1",
+              collapsed ? "mx-0" : "-mx-2"
+            )}>
               {navigation.map((item) => {
                 const isCurrent = pathname === item.href;
                 const Icon = isCurrent ? item.iconSolid : item.icon;
@@ -171,23 +224,33 @@ function SidebarContent({ onItemClick, pathname }: { onItemClick?: () => void; p
                       href={item.href}
                       onClick={onItemClick}
                       className={cn(
-                        'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors',
+                        'group flex text-sm font-semibold leading-6 transition-colors',
+                        collapsed 
+                          ? 'p-1 justify-center items-center rounded-lg hover:bg-accent/50' 
+                          : 'gap-x-3 p-2 rounded-md',
                         isCurrent
-                          ? 'bg-primary text-primary-foreground'
+                          ? collapsed
+                            ? 'text-primary bg-primary/10'
+                            : 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
+                      title={collapsed ? item.name : undefined}
                     >
                       <Icon className="h-6 w-6 shrink-0" />
-                      <span className="flex-1">{item.name}</span>
-                      {item.badge && (
-                        <span className={cn(
-                          'ml-auto inline-block rounded-full px-2 py-1 text-xs',
-                          isCurrent
-                            ? 'bg-primary-foreground text-primary'
-                            : 'bg-muted text-muted-foreground'
-                        )}>
-                          {item.badge}
-                        </span>
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1">{item.name}</span>
+                          {item.badge && (
+                            <span className={cn(
+                              'ml-auto inline-block rounded-full px-2 py-1 text-xs',
+                              isCurrent
+                                ? 'bg-primary-foreground text-primary'
+                                : 'bg-muted text-muted-foreground'
+                            )}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
                       )}
                     </a>
                   </li>
@@ -196,7 +259,7 @@ function SidebarContent({ onItemClick, pathname }: { onItemClick?: () => void; p
             </ul>
           </li>
 
-          {secondaryNavigation.length > 0 && (
+          {secondaryNavigation.length > 0 && !collapsed && (
             <li>
               <div className="text-xs font-semibold leading-6 text-muted-foreground px-2 mb-2">
                 More
@@ -209,7 +272,7 @@ function SidebarContent({ onItemClick, pathname }: { onItemClick?: () => void; p
                       onClick={onItemClick}
                       className={cn(
                         'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 transition-colors',
-                        item.current
+                        false // No current state needed for secondary nav
                           ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}

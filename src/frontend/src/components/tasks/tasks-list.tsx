@@ -2,20 +2,18 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
 import { api } from '@/lib/api';
 import { 
-  CheckCircleIcon,
   ClockIcon,
   EllipsisVerticalIcon,
   ListBulletIcon,
   FolderIcon,
   BookOpenIcon,
   PauseIcon,
-  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { 
   CheckCircleIcon as CheckCircleIconSolid,

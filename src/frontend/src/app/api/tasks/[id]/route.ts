@@ -12,7 +12,7 @@ import { backendApi } from '@/lib/backend-client';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // TODO: Server-side authentication
@@ -25,7 +25,8 @@ export async function PUT(
     // For now, use default user (replace with session-based user)
     const userId = process.env.DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001';
 
-    const taskId = parseInt(params.id);
+    const { id } = await params;
+    const taskId = parseInt(id);
     if (isNaN(taskId)) {
       return NextResponse.json({ error: 'Invalid task ID' }, { status: 400 });
     }
