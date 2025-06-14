@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backendApi } from '@/lib/backend-client';
+import { getSessionFromRequest } from '@/lib/session';
 
 /**
  * Projects API Route for individual project operations
@@ -15,15 +16,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Server-side authentication
-    // const session = await getServerSession(request);
-    // if (!session) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
-    // const userId = session.user.id;
+    // Extract session and JWT token
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // For now, use default user (replace with session-based user)
-    const userId = process.env.DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001';
+    const { userId, authToken } = session;
 
     const { id } = await params;
     const projectId = parseInt(id);
@@ -40,7 +39,7 @@ export async function PUT(
     }
 
     // Update project via backend
-    const backendProject = await backendApi.projects.update(projectId, updateData, userId);
+    const backendProject = await backendApi.projects.update(projectId, updateData, userId, authToken);
     
     // Transform backend data to match frontend expectations
     const project = {

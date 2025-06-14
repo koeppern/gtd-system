@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backendApi } from '@/lib/backend-client';
+import { getSessionFromRequest } from '@/lib/session';
 
 /**
  * Projects API Route - Server-Side Proxy
@@ -12,15 +13,13 @@ import { backendApi } from '@/lib/backend-client';
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Server-side authentication
-    // const session = await getServerSession(request);
-    // if (!session) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
-    // const userId = session.user.id;
+    // Extract session and JWT token
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // For now, use default user (replace with session-based user)
-    const userId = process.env.DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001';
+    const { userId, authToken } = session;
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -47,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch data from Python backend using server-side client
-    const backendProjects = await backendApi.projects.list(params, userId);
+    const backendProjects = await backendApi.projects.list(params, userId, authToken);
     
     
     // Transform backend data to match frontend expectations

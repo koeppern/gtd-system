@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { backendApi } from '@/lib/backend-client';
+import { getSessionFromRequest } from '@/lib/session';
 
 /**
  * Dashboard Stats API Route - Server-Side Proxy
@@ -10,20 +11,18 @@ import { backendApi } from '@/lib/backend-client';
  * SECURITY: Frontend never communicates directly with Python backend.
  */
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // TODO: Server-side authentication
-    // const session = await getServerSession(request);
-    // if (!session) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
-    // const userId = session.user.id;
+    // Extract session and JWT token
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // For now, use default user (replace with session-based user)
-    const userId = process.env.DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001';
+    const { userId, authToken } = session;
 
     // Fetch data from Python backend using server-side client
-    const stats = await backendApi.dashboard.getStats(userId);
+    const stats = await backendApi.dashboard.getStats(userId, authToken);
     
     // Log successful requests (remove in production)
     console.log('Dashboard stats fetched successfully:', {
