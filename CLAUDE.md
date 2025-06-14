@@ -7,6 +7,7 @@
 1. **Niemals SQLite verwenden** - Ausschließlich Supabase (PostgreSQL) als Datenbank
 2. **Keine SQLite-Mocks in Tests** - Supabase darf NIEMALS mit SQLite emuliert oder gemockt werden
 3. **Immer echte Supabase-Verbindung** - Auch in Tests wird die echte Supabase-Datenbank verwendet
+4. **Keine localStorage Fallbacks** - Wenn Datenbank nicht erreichbar ist, zeige Fehlermeldung statt localStorage zu verwenden. User sollen echte Datenbankfehler sehen, nicht heimliche Fallbacks.
 
 ## Code-Organisation
 

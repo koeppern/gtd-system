@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-hot-toast';
 
 interface ResizableTableProps {
   children: React.ReactNode;
@@ -14,8 +15,8 @@ interface ResizableTableProps {
     minWidth?: number;
     maxWidth?: number;
   }[];
-  onColumnResize?: (columnKey: string, width: number) => void;
-  onColumnReorder?: (fromIndex: number, toIndex: number) => void;
+  onColumnResize?: (columnKey: string, width: number) => Promise<void>;
+  onColumnReorder?: (fromIndex: number, toIndex: number) => Promise<void>;
 }
 
 export function ResizableTable({ 
@@ -39,15 +40,23 @@ export function ResizableTable({
   const startX = useRef(0);
   const startWidth = useRef(0);
 
-  const handleMoveLeft = (index: number) => {
+  const handleMoveLeft = async (index: number) => {
     if (index > 0 && onColumnReorder) {
-      onColumnReorder(index, index - 1);
+      try {
+        await onColumnReorder(index, index - 1);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to reorder columns');
+      }
     }
   };
 
-  const handleMoveRight = (index: number) => {
+  const handleMoveRight = async (index: number) => {
     if (index < columns.length - 1 && onColumnReorder) {
-      onColumnReorder(index, index + 1);
+      try {
+        await onColumnReorder(index, index + 1);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to reorder columns');
+      }
     }
   };
 
@@ -83,11 +92,15 @@ export function ResizableTable({
     }
   }, [resizing, isDragging, columns]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback(async () => {
     console.log('Mouse up - resizing:', resizing);
     if (resizing && onColumnResize) {
       const currentWidth = columnWidths[resizing];
-      onColumnResize(resizing, currentWidth);
+      try {
+        await onColumnResize(resizing, currentWidth);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to save column width');
+      }
     }
     setResizing(null);
     setIsDragging(false);
@@ -291,9 +304,9 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
       const { api } = await import('@/lib/api');
       await api.userSettings.update(`table-${tableKey}-widths`, widths);
     } catch (error) {
-      console.warn('Failed to save column widths to database:', error);
-      // Fallback to localStorage
-      localStorage.setItem(`table-${tableKey}-widths`, JSON.stringify(widths));
+      console.error('Failed to save column widths to database:', error);
+      // Show user error instead of silent fallback
+      throw new Error(`Database connection failed: Unable to save table settings. Please check your connection and try again.`);
     }
   };
 
@@ -311,9 +324,9 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
       const { api } = await import('@/lib/api');
       await api.userSettings.update(`table-${tableKey}-order`, order);
     } catch (error) {
-      console.warn('Failed to save column order to database:', error);
-      // Fallback to localStorage
-      localStorage.setItem(`table-${tableKey}-order`, JSON.stringify(order));
+      console.error('Failed to save column order to database:', error);
+      // Show user error instead of silent fallback
+      throw new Error(`Database connection failed: Unable to save table settings. Please check your connection and try again.`);
     }
   };
 
