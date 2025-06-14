@@ -141,3 +141,7 @@ test_supabase_debug.py
 disable_rls_manual.sql
 enable_rls_manual.sql
 RLS_DISABLE_INSTRUCTIONS.md
+
+# Temporary development/debug folder
+del/
+del/

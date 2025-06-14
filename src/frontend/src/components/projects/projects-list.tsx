@@ -270,37 +270,48 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
         {groupBy && ` grouped by ${groupBy}`}
       </div>
 
-      {/* Grouped Tables or Single Table */}
-      {groupedProjects.map((group, groupIndex) => (
-        <div key={group.groupName || 'main'} className="space-y-4">
-          {/* Group Header (only show if there's a grouping) */}
-          {groupBy && group.groupName && (
-            <div className="flex items-center space-x-2 pt-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                {group.groupName}
-              </h3>
-              <Badge variant="secondary" className="text-xs">
-                {group.items.length} project{group.items.length !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-          )}
-
-          {/* Resizable Table */}
-          <Card>
-            <CardContent className="p-0">
-              <ResizableTable 
-                columns={columns} 
-                onColumnResize={handleColumnResize}
-                onColumnReorder={handleColumnReorder}
-                className="text-sm"
-              >
+      {/* Single Table with Group Sections */}
+      <Card>
+        <CardContent className="p-0">
+          <ResizableTable 
+            columns={columns} 
+            onColumnResize={handleColumnResize}
+            onColumnReorder={handleColumnReorder}
+            className="text-sm"
+          >
+            {groupedProjects.map((group, groupIndex) => (
+              <React.Fragment key={group.groupName || 'main'}>
+                {/* Group Header Row (only show if there's a grouping) */}
+                {groupBy && group.groupName && (
+                  <tr className="bg-muted/50 border-b border-border">
+                    <td colSpan={columns.length} className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-sm font-semibold text-foreground">
+                          {group.groupName}
+                        </h3>
+                        <Badge variant="secondary" className="text-xs">
+                          {group.items.length} project{group.items.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                
+                {/* Group Items */}
                 {group.items.map((project, index) => {
+                  // Calculate global index across all groups
+                  let globalIndex = 0;
+                  for (let i = 0; i < groupIndex; i++) {
+                    globalIndex += groupedProjects[i].items.length;
+                  }
+                  globalIndex += index + 1;
+
               const renderCell = (columnKey: string) => {
                 switch (columnKey) {
                   case 'no':
                     return (
                       <td key={columnKey} className="py-3 px-4 text-center text-muted-foreground">
-                        {index + 1}
+                        {globalIndex}
                       </td>
                     );
                   case 'name':
@@ -442,11 +453,11 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                     </tr>
                   );
                 })}
-              </ResizableTable>
-            </CardContent>
-          </Card>
-        </div>
-      ))}
+              </React.Fragment>
+            ))}
+          </ResizableTable>
+        </CardContent>
+      </Card>
 
       {/* Additional Summary */}
       {!groupBy && (
