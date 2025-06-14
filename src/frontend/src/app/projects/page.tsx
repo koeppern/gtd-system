@@ -21,7 +21,7 @@ export default function ProjectsPage() {
     { key: 'do_this_week', label: 'Do This Week', enabled: true },
   ];
 
-  // First, get total count to initialize pagination
+  // Optimized queries with intelligent caching
   const { data: totalCountData } = useQuery({
     queryKey: ['projects-count', { showCompleted, search: searchQuery }],
     queryFn: () => api.projects.list({ 
@@ -30,6 +30,8 @@ export default function ProjectsPage() {
       limit: 1, // Just get count
       offset: 0 
     }),
+    staleTime: 1000 * 60 * 5, // Count doesn't change often
+    gcTime: 1000 * 60 * 10, // Keep count cache longer
   });
 
   const totalItems = totalCountData?.total || 0;
@@ -52,6 +54,9 @@ export default function ProjectsPage() {
       offset: pagination.offset
     }),
     enabled: totalItems > 0 || !totalCountData, // Fetch even if no count data yet
+    staleTime: 1000 * 60 * 3, // Projects data stays fresh for 3 minutes
+    gcTime: 1000 * 60 * 15, // Keep in cache for 15 minutes
+    placeholderData: (previousData) => previousData, // Keep showing old data while loading new
   });
 
   return (
