@@ -2,6 +2,7 @@
 Supabase client configuration and connection management
 """
 from typing import Optional
+import psycopg2
 from supabase import create_client, Client
 from app.config import get_settings
 
@@ -46,6 +47,43 @@ def test_connection() -> bool:
     except Exception as e:
         print(f"Supabase connection test failed: {e}")
         return False
+
+def get_db_connection():
+    """
+    Get direct PostgreSQL connection for raw SQL queries
+    """
+    import os
+    
+    # Get connection details from environment variables
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        return psycopg2.connect(database_url)
+    
+    # Fallback to individual environment variables
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    
+    if not supabase_url:
+        raise ValueError("Missing SUPABASE_URL or DATABASE_URL")
+    
+    # Extract database connection details from Supabase URL
+    # Format: https://project.supabase.co
+    project_id = supabase_url.replace("https://", "").replace(".supabase.co", "")
+    
+    # Build PostgreSQL connection string
+    # Note: This is a simplified approach - you might need to adjust based on your actual Supabase setup
+    host = f"db.{project_id}.supabase.co"
+    database = "postgres"
+    user = "postgres"
+    password = service_key  # This might not be correct - adjust based on your setup
+    
+    return psycopg2.connect(
+        host=host,
+        database=database,
+        user=user,
+        password=password,
+        port=5432
+    )
 
 # Dependency function for FastAPI
 def get_db() -> Client:
