@@ -48,9 +48,28 @@ export async function GET(request: NextRequest) {
     // Fetch data from Python backend using server-side client
     const backendProjects = await backendApi.projects.list(params, userId, authToken);
     
-    
     // Transform backend data to match frontend expectations
     const transformedProjects = Array.isArray(backendProjects) ? backendProjects : [];
+    
+    // To get the total count, we need to make a separate request without pagination
+    // This is necessary because the backend doesn't return total count with paginated results
+    const countParams = { ...params };
+    delete countParams.limit;
+    delete countParams.offset;
+    
+    // Get total count by fetching all projects (without pagination)
+    // In a production app, you'd want the backend to return count in the response
+    let totalCount = transformedProjects.length;
+    
+    // If we got a full page of results, there might be more
+    if (transformedProjects.length === limit) {
+      // Make a request with maximum allowed limit to get count
+      // Backend maximum is 1000
+      const allProjectsParams = { ...countParams, limit: 1000, offset: 0 };
+      const allProjects = await backendApi.projects.list(allProjectsParams, userId, authToken);
+      totalCount = Array.isArray(allProjects) ? allProjects.length : 0;
+    }
+    
     const projects = {
       items: transformedProjects.map((project: any) => ({
         id: project.id,
@@ -65,9 +84,11 @@ export async function GET(request: NextRequest) {
         created_at: project.created_at,
         updated_at: project.updated_at,
       })),
-      total: transformedProjects.length,
+      total: totalCount,
       limit: limit,
       offset: offset,
+      has_next: offset + limit < totalCount,
+      has_prev: offset > 0,
     };
     
     // Log successful requests (remove in production)

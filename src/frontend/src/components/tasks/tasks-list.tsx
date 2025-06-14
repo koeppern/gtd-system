@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
+import { ResizableTable, useResizableColumns } from '@/components/ui/resizable-table';
 import { api } from '@/lib/api';
 import { 
   ClockIcon,
@@ -51,6 +52,89 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
 
+  const handleSort = (newSortBy: 'name' | 'project' | 'priority' | 'created' | 'updated') => {
+    if (sortBy === newSortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  };
+
+  // Define resizable columns
+  const defaultColumns = [
+    { key: 'no', title: 'No', width: 60, minWidth: 40, maxWidth: 100 },
+    { key: 'name', title: (
+      <button
+        onClick={() => handleSort('name')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Task Name</span>
+        {sortBy === 'name' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 300, minWidth: 150, maxWidth: 500 },
+    { key: 'project', title: (
+      <button
+        onClick={() => handleSort('project')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Project</span>
+        {sortBy === 'project' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 180, minWidth: 100, maxWidth: 300 },
+    { key: 'status', title: 'Status', width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'priority', title: (
+      <button
+        onClick={() => handleSort('priority')}
+        className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
+      >
+        <span>Priority</span>
+        {sortBy === 'priority' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 100, minWidth: 70, maxWidth: 150 },
+    { key: 'created', title: (
+      <button
+        onClick={() => handleSort('created')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Created</span>
+        {sortBy === 'created' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 120, minWidth: 100, maxWidth: 180 },
+    { key: 'updated', title: (
+      <button
+        onClick={() => handleSort('updated')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Last Updated</span>
+        {sortBy === 'updated' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 140, minWidth: 100, maxWidth: 200 },
+    { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
+  ];
+
+  const { columns, handleColumnResize } = useResizableColumns('tasks', defaultColumns);
+
   // Mutation for updating task name
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
@@ -60,37 +144,14 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
       // Invalidate and refetch tasks list
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
-    onError: (error) => {
-      console.error('Failed to update task:', error);
-    },
   });
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse">
-                <div className="h-6 bg-muted rounded mb-2" />
-                <div className="h-4 bg-muted rounded w-1/3" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
+  // Sort tasks
   const sortedTasks = [...tasks].sort((a, b) => {
-    let aValue: string | number;
-    let bValue: string | number;
+    let aValue: any;
+    let bValue: any;
 
     switch (sortBy) {
-      case 'name':
-        aValue = (a.task_name || a.name || '').toLowerCase();
-        bValue = (b.task_name || b.name || '').toLowerCase();
-        break;
       case 'project':
         aValue = (a.project_name || '').toLowerCase();
         bValue = (b.project_name || '').toLowerCase();
@@ -119,15 +180,6 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
     }
   });
 
-  const handleSort = (newSortBy: 'name' | 'project' | 'priority' | 'created' | 'updated') => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
-    }
-  };
-
   const isCompleted = (task: Task) => {
     return task.done_at !== null;
   };
@@ -153,199 +205,134 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Table Header */}
+      {/* Summary */}
+      <div className="text-sm text-muted-foreground">
+        Showing {tasks.length} {showCompleted ? 'total' : 'active'} tasks
+      </div>
+
+      {/* Resizable Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-center py-4 px-6 font-semibold text-muted-foreground w-16">
-                    No
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('name')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Task Name</span>
-                      {sortBy === 'name' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('project')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Project</span>
-                      {sortBy === 'project' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="text-center py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('priority')}
-                      className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
-                    >
-                      <span>Priority</span>
-                      {sortBy === 'priority' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('created')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Created</span>
-                      {sortBy === 'created' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('updated')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Last Updated</span>
-                      {sortBy === 'updated' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="w-20 py-4 px-6"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTasks.map((task, index) => (
-                  <tr 
-                    key={task.id} 
-                    className="border-b border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-center text-muted-foreground">
-                      {index + 1}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-3">
-                        {isCompleted(task) ? (
-                          <CheckCircleIconSolid className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <ListBulletIconSolid className="h-5 w-5 text-blue-600" />
+          <ResizableTable 
+            columns={columns} 
+            onColumnResize={handleColumnResize}
+            className="text-sm"
+          >
+            {sortedTasks.map((task, index) => (
+              <tr 
+                key={task.id} 
+                className="border-b border-border hover:bg-muted/50 transition-colors"
+              >
+                <td className="py-3 px-4 text-center text-muted-foreground">
+                  {index + 1}
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex items-center space-x-3">
+                    {isCompleted(task) ? (
+                      <CheckCircleIconSolid className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <ListBulletIconSolid className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <InlineEdit
+                        value={task.task_name || task.name || `Task ${task.id}`}
+                        onSave={async (newValue) => {
+                          await updateTaskMutation.mutateAsync({
+                            id: task.id,
+                            data: { task_name: newValue }
+                          });
+                        }}
+                        className="font-medium text-foreground break-words"
+                        placeholder="Task name"
+                        disabled={updateTaskMutation.isPending}
+                      />
+                      <div className="flex items-center space-x-2 mt-1 flex-wrap">
+                        {task.do_today && (
+                          <Badge variant="secondary" className="text-xs">
+                            Today
+                          </Badge>
                         )}
-                        <div className="flex-1">
-                          <InlineEdit
-                            value={task.task_name || task.name || `Task ${task.id}`}
-                            onSave={async (newValue) => {
-                              await updateTaskMutation.mutateAsync({
-                                id: task.id,
-                                data: { task_name: newValue }
-                              });
-                            }}
-                            className="font-medium text-foreground"
-                            placeholder="Task name"
-                            disabled={updateTaskMutation.isPending}
-                          />
-                          <div className="flex items-center space-x-2 mt-1">
-                            {task.do_today && (
-                              <Badge variant="secondary" className="text-xs">
-                                Today
-                              </Badge>
-                            )}
-                            {task.do_this_week && !task.do_today && (
-                              <Badge variant="secondary" className="text-xs">
-                                This Week
-                              </Badge>
-                            )}
-                            {task.is_reading && (
-                              <BookOpenIcon className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            {task.wait_for && (
-                              <PauseIcon className="h-3 w-3 text-orange-500" />
-                            )}
-                            {task.postponed && (
-                              <ClockIcon className="h-3 w-3 text-red-500" />
-                            )}
-                          </div>
-                        </div>
+                        {task.do_this_week && !task.do_today && (
+                          <Badge variant="secondary" className="text-xs">
+                            This Week
+                          </Badge>
+                        )}
+                        {task.is_reading && (
+                          <Badge variant="outline" className="text-xs">
+                            <BookOpenIcon className="h-3 w-3 mr-1" />
+                            Reading
+                          </Badge>
+                        )}
+                        {task.wait_for && (
+                          <Badge variant="outline" className="text-xs">
+                            <ClockIcon className="h-3 w-3 mr-1" />
+                            Waiting
+                          </Badge>
+                        )}
+                        {task.postponed && (
+                          <Badge variant="outline" className="text-xs">
+                            <PauseIcon className="h-3 w-3 mr-1" />
+                            Postponed
+                          </Badge>
+                        )}
                       </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      {task.project_name ? (
-                        <div className="flex items-center space-x-2">
-                          <FolderIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">{task.project_name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground italic">No project</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-6">
-                      {isCompleted(task) ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          Completed
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-blue-600 border-blue-200">
-                          Active
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-center text-muted-foreground">
-                      {task.priority || '-'}
-                    </td>
-                    <td className="py-4 px-6 text-muted-foreground">
-                      {new Date(task.created_at).toISOString().split('T')[0]}
-                    </td>
-                    <td className="py-4 px-6 text-muted-foreground">
-                      {new Date(task.updated_at).toISOString().split('T')[0]}
-                    </td>
-                    <td className="py-4 px-6">
-                      <Button variant="ghost" size="sm">
-                        <EllipsisVerticalIcon className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex items-center space-x-2">
+                    {task.project_name && (
+                      <>
+                        <FolderIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground truncate">
+                          {task.project_name}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    {isCompleted(task) ? (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                        Completed
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span className="text-sm font-medium">
+                    {task.priority || 0}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(task.created_at).toLocaleDateString()}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(task.updated_at).toLocaleDateString()}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
+                  >
+                    <EllipsisVerticalIcon className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </ResizableTable>
         </CardContent>
       </Card>
-
-      {/* Summary */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div>
-          Showing {sortedTasks.length} {showCompleted ? 'tasks' : 'active tasks'}
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <ListBulletIconSolid className="h-4 w-4 text-blue-600" />
-            <span>{sortedTasks.filter(t => !isCompleted(t)).length} Active</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CheckCircleIconSolid className="h-4 w-4 text-green-600" />
-            <span>{sortedTasks.filter(t => isCompleted(t)).length} Completed</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

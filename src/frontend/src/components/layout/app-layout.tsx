@@ -1,12 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserProfileMenu } from '@/components/ui/user-profile-menu';
+import { CentralLogin } from '@/components/auth/central-login';
 import { useAuth } from '@/contexts/auth-context';
 import { 
   HomeIcon,
@@ -64,9 +65,26 @@ const secondaryNavigation: NavItem[] = [];
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const { theme, setTheme } = useTheme();
   const { user, login, logout, isLoading } = useAuth();
   const pathname = usePathname();
+
+  // Load sidebar state from localStorage on mount
+  useEffect(() => {
+    setIsClient(true);
+    const savedCollapsed = localStorage.getItem('gtd-sidebar-collapsed');
+    if (savedCollapsed !== null) {
+      setSidebarCollapsed(savedCollapsed === 'true');
+    }
+  }, []);
+
+  // Save sidebar state to localStorage when it changes
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('gtd-sidebar-collapsed', sidebarCollapsed.toString());
+    }
+  }, [sidebarCollapsed, isClient]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,13 +167,15 @@ export function AppLayout({ children }: AppLayoutProps) {
               <span className="sr-only">Toggle theme</span>
             </Button>
 
-            {/* Profile - Always sharp for login access */}
-            <UserProfileMenu 
-              user={user}
-              onLogin={login}
-              onLogout={logout}
-              isLoading={isLoading}
-            />
+            {/* Profile - Only show when logged in */}
+            {user && (
+              <UserProfileMenu 
+                user={user}
+                onLogin={login}
+                onLogout={logout}
+                isLoading={isLoading}
+              />
+            )}
           </div>
         </div>
 
@@ -167,6 +187,14 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Central Login Overlay */}
+      {!user && (
+        <CentralLogin 
+          onLogin={login}
+          isAuthLoading={isLoading}
+        />
+      )}
     </div>
   );
 }

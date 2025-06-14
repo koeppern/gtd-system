@@ -35,6 +35,9 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Debug: Test if console.log works
+  console.log('AuthProvider initialized, isLoading:', isLoading);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -74,6 +77,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const login = async (email: string, _password: string) => {
+    console.log('Login attempt started for:', email);
     setIsLoading(true);
     try {
       // TODO: Implement actual Supabase authentication
@@ -98,6 +102,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('gtd_session', JSON.stringify(sessionData));
       
       console.log('User logged in and session saved to localStorage');
+      console.log('Login process completed successfully for:', email);
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -105,6 +110,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Login failed:', error);
       throw error;
     } finally {
+      console.log('Login loading state set to false');
       setIsLoading(false);
     }
   };

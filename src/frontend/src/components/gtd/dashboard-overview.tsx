@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   CheckCircleIcon,
@@ -18,6 +19,8 @@ interface DashboardOverviewProps {
 }
 
 export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) {
+  const router = useRouter();
+
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -47,6 +50,8 @@ export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) 
       bgColor: 'bg-green-50',
       trend: '+3%',
       trendUp: true,
+      href: '/projects',
+      clickable: true,
     },
     {
       title: 'Tasks Today',
@@ -57,6 +62,8 @@ export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) 
       bgColor: 'bg-blue-50',
       trend: '+12%',
       trendUp: true,
+      href: '/tasks',
+      clickable: true,
     },
     {
       title: 'Completed',
@@ -67,6 +74,8 @@ export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) 
       bgColor: 'bg-emerald-50',
       trend: '+8%',
       trendUp: true,
+      href: '/tasks?filter=completed',
+      clickable: true,
     },
     {
       title: 'This Week',
@@ -77,20 +86,38 @@ export function DashboardOverview({ stats, isLoading }: DashboardOverviewProps) 
       bgColor: 'bg-purple-50',
       trend: '-2%',
       trendUp: false,
+      href: '/tasks?filter=week',
+      clickable: true,
     },
   ];
+
+  const handleCardClick = (card: typeof overviewCards[0]) => {
+    if (card.clickable && card.href) {
+      router.push(card.href as any);
+    }
+  };
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {overviewCards.map((card, index) => (
-        <Card key={index} className="hover:shadow-md transition-shadow">
+        <Card 
+          key={index} 
+          className={cn(
+            "transition-all duration-200",
+            card.clickable 
+              ? "hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary/50" 
+              : "hover:shadow-md"
+          )}
+          onClick={() => handleCardClick(card)}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {card.title}
             </CardTitle>
             <div className={cn(
-              'h-8 w-8 rounded-full flex items-center justify-center',
-              card.bgColor
+              'h-8 w-8 rounded-full flex items-center justify-center transition-colors',
+              card.bgColor,
+              card.clickable && 'group-hover:bg-primary/20'
             )}>
               <card.icon className={cn('h-4 w-4', card.color)} />
             </div>

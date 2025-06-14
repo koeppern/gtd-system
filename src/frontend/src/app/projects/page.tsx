@@ -4,20 +4,44 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProjectsList } from '@/components/projects/projects-list';
+import { Pagination, usePagination } from '@/components/ui/pagination';
 import { api } from '@/lib/api';
 
 export default function ProjectsPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch projects data
-  const { data: projectsData, isLoading } = useQuery({
-    queryKey: ['projects', { showCompleted, search: searchQuery }],
+  // First, get total count to initialize pagination
+  const { data: totalCountData } = useQuery({
+    queryKey: ['projects-count', { showCompleted, search: searchQuery }],
     queryFn: () => api.projects.list({ 
       showCompleted, 
       search: searchQuery,
-      limit: 100 
+      limit: 1, // Just get count
+      offset: 0 
     }),
+  });
+
+  const totalItems = totalCountData?.total || 0;
+  
+  // Initialize pagination
+  const pagination = usePagination(totalItems, 50);
+
+  // Fetch projects data with pagination
+  const { data: projectsData, isLoading } = useQuery({
+    queryKey: ['projects', { 
+      showCompleted, 
+      search: searchQuery, 
+      offset: pagination.offset, 
+      limit: pagination.limit 
+    }],
+    queryFn: () => api.projects.list({ 
+      showCompleted, 
+      search: searchQuery,
+      limit: pagination.limit,
+      offset: pagination.offset
+    }),
+    enabled: totalItems > 0 || !totalCountData, // Fetch even if no count data yet
   });
 
   return (
@@ -75,12 +99,38 @@ export default function ProjectsPage() {
           />
         </div>
 
+        {/* Pagination - Top */}
+        {totalItems > 0 && (
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalItems={totalItems}
+            itemsPerPage={pagination.itemsPerPage}
+            onPageChange={pagination.handlePageChange}
+            onShowAll={pagination.handleShowAll}
+            isShowingAll={pagination.isShowingAll}
+            className="mb-4"
+          />
+        )}
+
         {/* Projects List */}
         <ProjectsList 
           projects={Array.isArray(projectsData) ? projectsData : (projectsData?.items || [])} 
           isLoading={isLoading}
           showCompleted={showCompleted}
         />
+
+        {/* Pagination - Bottom */}
+        {totalItems > 0 && (
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalItems={totalItems}
+            itemsPerPage={pagination.itemsPerPage}
+            onPageChange={pagination.handlePageChange}
+            onShowAll={pagination.handleShowAll}
+            isShowingAll={pagination.isShowingAll}
+            className="mt-8"
+          />
+        )}
       </div>
     </AppLayout>
   );

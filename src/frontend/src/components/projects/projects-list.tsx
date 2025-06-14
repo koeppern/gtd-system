@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
+import { ResizableTable, useResizableColumns } from '@/components/ui/resizable-table';
 import { api } from '@/lib/api';
 import { 
   FolderIcon,
@@ -39,6 +40,79 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'tasks' | 'created' | 'updated'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
+
+  // Define resizable columns
+  const defaultColumns = [
+    { key: 'no', title: 'No', width: 60, minWidth: 40, maxWidth: 100 },
+    { key: 'name', title: (
+      <button
+        onClick={() => handleSort('name')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Project Name</span>
+        {sortBy === 'name' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 300, minWidth: 150, maxWidth: 500 },
+    { key: 'status', title: (
+      <button
+        onClick={() => handleSort('status')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Status</span>
+        {sortBy === 'status' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'tasks', title: (
+      <button
+        onClick={() => handleSort('tasks')}
+        className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
+      >
+        <span>Tasks</span>
+        {sortBy === 'tasks' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 100, minWidth: 70, maxWidth: 150 },
+    { key: 'created', title: (
+      <button
+        onClick={() => handleSort('created')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Created</span>
+        {sortBy === 'created' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 120, minWidth: 100, maxWidth: 180 },
+    { key: 'updated', title: (
+      <button
+        onClick={() => handleSort('updated')}
+        className="flex items-center space-x-2 hover:text-foreground transition-colors"
+      >
+        <span>Last Updated</span>
+        {sortBy === 'updated' && (
+          <span className="text-xs">
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </button>
+    ), width: 140, minWidth: 100, maxWidth: 200 },
+    { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
+  ];
+
+  const { columns, handleColumnResize } = useResizableColumns('projects', defaultColumns);
 
   // Mutation for updating project name
   const updateProjectMutation = useMutation({
@@ -142,159 +216,102 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
 
   return (
     <div className="space-y-6">
-      {/* Table Header */}
+      {/* Summary */}
+      <div className="text-sm text-muted-foreground">
+        Showing {projects.length} {showCompleted ? 'total' : 'active'} projects
+      </div>
+
+      {/* Resizable Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-center py-4 px-6 font-semibold text-muted-foreground w-16">
-                    No
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('name')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Project Name</span>
-                      {sortBy === 'name' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('status')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Status</span>
-                      {sortBy === 'status' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-center py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('tasks')}
-                      className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
-                    >
-                      <span>Tasks</span>
-                      {sortBy === 'tasks' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('created')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Created</span>
-                      {sortBy === 'created' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
-                    <button
-                      onClick={() => handleSort('updated')}
-                      className="flex items-center space-x-2 hover:text-foreground transition-colors"
-                    >
-                      <span>Last Updated</span>
-                      {sortBy === 'updated' && (
-                        <span className="text-xs">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="w-20 py-4 px-6"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedProjects.map((project, index) => (
-                  <tr 
-                    key={project.id} 
-                    className="border-b border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-center text-muted-foreground">
-                      {index + 1}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-3">
-                        {isCompleted(project) ? (
-                          <CheckCircleIconSolid className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <FolderIconSolid className="h-5 w-5 text-blue-600" />
-                        )}
-                        <div className="flex-1">
-                          <InlineEdit
-                            value={project.project_name || project.name || `Project ${project.id}`}
-                            onSave={async (newValue) => {
-                              await updateProjectMutation.mutateAsync({
-                                id: project.id,
-                                data: { project_name: newValue }
-                              });
-                            }}
-                            className="font-medium text-foreground"
-                            placeholder="Project name"
-                            disabled={updateProjectMutation.isPending}
-                          />
-                          {project.do_this_week && (
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              This Week
-                            </Badge>
-                          )}
+          <ResizableTable 
+            columns={columns} 
+            onColumnResize={handleColumnResize}
+            className="text-sm"
+          >
+            {sortedProjects.map((project, index) => (
+              <tr 
+                key={project.id} 
+                className="border-b border-border hover:bg-muted/50 transition-colors"
+              >
+                <td className="py-3 px-4 text-center text-muted-foreground">
+                  {index + 1}
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex items-center space-x-3">
+                    {isCompleted(project) ? (
+                      <CheckCircleIconSolid className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <FolderIconSolid className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <InlineEdit
+                        value={project.project_name || project.name || `Project ${project.id}`}
+                        onSave={async (newValue) => {
+                          await updateProjectMutation.mutateAsync({
+                            id: project.id,
+                            data: { project_name: newValue }
+                          });
+                        }}
+                        className="font-medium text-foreground break-words"
+                        placeholder="Project name"
+                        disabled={updateProjectMutation.isPending}
+                      />
+                      {project.do_this_week && (
+                        <div className="mt-1">
+                          <Badge variant="secondary" className="text-xs">
+                            This Week
+                          </Badge>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      {isCompleted(project) ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          Completed
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-blue-600 border-blue-200">
-                          Active
-                        </Badge>
                       )}
-                    </td>
-                    <td className="py-4 px-6 text-center text-muted-foreground">
-                      {project.task_count || 0}
-                    </td>
-                    <td className="py-4 px-6 text-muted-foreground">
-                      {new Date(project.created_at).toISOString().split('T')[0]}
-                    </td>
-                    <td className="py-4 px-6 text-muted-foreground">
-                      {new Date(project.updated_at).toISOString().split('T')[0]}
-                    </td>
-                    <td className="py-4 px-6">
-                      <Button variant="ghost" size="sm">
-                        <EllipsisVerticalIcon className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    {isCompleted(project) ? (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                        Completed
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span className="text-sm font-medium">
+                    {project.task_count || 0}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(project.created_at).toLocaleDateString()}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(project.updated_at).toLocaleDateString()}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
+                  >
+                    <EllipsisVerticalIcon className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </ResizableTable>
         </CardContent>
       </Card>
 
-      {/* Summary */}
+      {/* Additional Summary */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div>
-          Showing {sortedProjects.length} {showCompleted ? 'projects' : 'active projects'}
-        </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <FolderIconSolid className="h-4 w-4 text-blue-600" />
