@@ -25,8 +25,14 @@ interface Project {
   done_status?: boolean;
   done_at?: string;
   field_id?: number;
+  field_name?: string; // Resolved field name from gtd_fields
   do_this_week?: boolean;
   task_count?: number;
+  readings?: string;
+  keywords?: string;
+  mother_project?: string;
+  related_projects?: string;
+  gtd_processes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +65,7 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
         )}
       </button>
     ), width: 300, minWidth: 150, maxWidth: 500 },
+    { key: 'field', title: 'Field', width: 120, minWidth: 80, maxWidth: 200 },
     { key: 'status', title: (
       <button
         onClick={() => handleSort('status')}
@@ -85,6 +92,10 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
         )}
       </button>
     ), width: 100, minWidth: 70, maxWidth: 150 },
+    { key: 'keywords', title: 'Keywords', width: 150, minWidth: 100, maxWidth: 250 },
+    { key: 'mother_project', title: 'Parent Project', width: 150, minWidth: 100, maxWidth: 250 },
+    { key: 'readings', title: 'Readings', width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'gtd_processes', title: 'GTD Processes', width: 130, minWidth: 100, maxWidth: 200 },
     { key: 'created', title: (
       <button
         onClick={() => handleSort('created')}
@@ -193,26 +204,13 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
     }
   };
 
-  const isCompleted = (project: Project) => {
-    return project.done_at !== null || project.done_status === true;
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
-    } catch (error) {
-      return dateString; // fallback to original string if parsing fails
-    }
-  };
-
   // Function to get group value for a project
   const getGroupValue = (project: Project, key: string): string | number | null => {
     switch (key) {
       case 'status':
         return isCompleted(project) ? 'Completed' : 'Active';
       case 'field':
-        return project.field_id ? `Field ${project.field_id}` : 'No Field';
+        return project.field_name || 'No Field';
       case 'task_count':
         const count = project.task_count || 0;
         if (count === 0) return '0 tasks';
@@ -229,6 +227,19 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
 
   // Group projects if groupBy is selected
   const groupedProjects = useGroupBy(sortedProjects, groupBy, getGroupValue);
+
+  const isCompleted = (project: Project) => {
+    return project.done_at !== null || project.done_status === true;
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    } catch (error) {
+      return dateString; // fallback to original string if parsing fails
+    }
+  };
 
   if (projects.length === 0) {
     return (
@@ -339,11 +350,51 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                         </div>
                       </td>
                     );
+                  case 'field':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-sm text-muted-foreground">
+                          {project.field_name || '-'}
+                        </span>
+                      </td>
+                    );
                   case 'tasks':
                     return (
                       <td key={columnKey} className="py-3 px-4 text-center">
                         <span className="text-sm font-medium">
                           {project.task_count || 0}
+                        </span>
+                      </td>
+                    );
+                  case 'keywords':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground truncate">
+                          {project.keywords || '-'}
+                        </span>
+                      </td>
+                    );
+                  case 'mother_project':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground truncate">
+                          {project.mother_project || '-'}
+                        </span>
+                      </td>
+                    );
+                  case 'readings':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground truncate">
+                          {project.readings || '-'}
+                        </span>
+                      </td>
+                    );
+                  case 'gtd_processes':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground truncate">
+                          {project.gtd_processes || '-'}
                         </span>
                       </td>
                     );

@@ -37,7 +37,13 @@ interface Task {
   reviewed?: boolean;
   do_on_date?: string;
   field_id?: number;
+  field_name?: string; // Resolved field name from gtd_fields
   priority?: number;
+  time_expenditure?: string;
+  url?: string;
+  knowledge_db_entry?: string;
+  last_edited?: string;
+  date_of_creation?: string;
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +98,7 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
         )}
       </button>
     ), width: 180, minWidth: 100, maxWidth: 300 },
+    { key: 'field', title: 'Field', width: 120, minWidth: 80, maxWidth: 200 },
     { key: 'status', title: 'Status', width: 120, minWidth: 80, maxWidth: 200 },
     { key: 'priority', title: (
       <button
@@ -106,6 +113,10 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
         )}
       </button>
     ), width: 100, minWidth: 70, maxWidth: 150 },
+    { key: 'do_on_date', title: 'Due Date', width: 120, minWidth: 100, maxWidth: 180 },
+    { key: 'time_expenditure', title: 'Time Est.', width: 100, minWidth: 80, maxWidth: 150 },
+    { key: 'reviewed', title: 'Reviewed', width: 90, minWidth: 70, maxWidth: 120 },
+    { key: 'url', title: 'URL', width: 100, minWidth: 80, maxWidth: 150 },
     { key: 'created', title: (
       <button
         onClick={() => handleSort('created')}
@@ -182,19 +193,6 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
     }
   });
 
-  const isCompleted = (task: Task) => {
-    return task.done_at !== null;
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
-    } catch (error) {
-      return dateString; // fallback to original string if parsing fails
-    }
-  };
-
   // Function to get group value for a task
   const getGroupValue = (task: Task, key: string): string | number | null => {
     switch (key) {
@@ -205,7 +203,7 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
       case 'priority':
         return task.priority || 0;
       case 'field':
-        return task.field_id ? `Field ${task.field_id}` : 'No Field';
+        return task.field_name || 'No Field';
       case 'do_today':
         return task.do_today ? 'Today' : 'Not Today';
       case 'do_this_week':
@@ -223,6 +221,19 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
 
   // Group tasks if groupBy is selected
   const groupedTasks = useGroupBy(sortedTasks, groupBy, getGroupValue);
+
+  const isCompleted = (task: Task) => {
+    return task.done_at !== null;
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    } catch (error) {
+      return dateString; // fallback to original string if parsing fails
+    }
+  };
 
   if (tasks.length === 0) {
     return (
@@ -371,12 +382,67 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
                         </div>
                       </td>
                     );
+                  case 'field':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-sm text-muted-foreground">
+                          {task.field_name || '-'}
+                        </span>
+                      </td>
+                    );
                   case 'priority':
                     return (
                       <td key={columnKey} className="py-3 px-4 text-center">
                         <span className="text-sm font-medium">
                           {task.priority || 0}
                         </span>
+                      </td>
+                    );
+                  case 'do_on_date':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground">
+                          {task.do_on_date ? formatDate(task.do_on_date) : '-'}
+                        </span>
+                      </td>
+                    );
+                  case 'time_expenditure':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        <span className="text-xs text-muted-foreground">
+                          {task.time_expenditure || '-'}
+                        </span>
+                      </td>
+                    );
+                  case 'reviewed':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        {task.reviewed ? (
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                            ✓ Reviewed
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            Pending
+                          </Badge>
+                        )}
+                      </td>
+                    );
+                  case 'url':
+                    return (
+                      <td key={columnKey} className="py-3 px-4">
+                        {task.url ? (
+                          <a 
+                            href={task.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            Link
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
                       </td>
                     );
                   case 'created':
