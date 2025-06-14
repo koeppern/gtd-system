@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Fira_Code } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
+import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from 'react-hot-toast';
 import '@/styles/globals.css';
 
@@ -69,11 +70,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <div className="flex-1">
-                {children}
+            <AuthProvider>
+              <div className="relative flex min-h-screen flex-col">
+                <div className="flex-1">
+                  {children}
+                </div>
               </div>
-            </div>
+            </AuthProvider>
             <Toaster
               position="top-right"
               toastOptions={{

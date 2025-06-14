@@ -6,6 +6,8 @@ import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { UserProfileMenu } from '@/components/ui/user-profile-menu';
+import { useAuth } from '@/contexts/auth-context';
 import { 
   HomeIcon,
   FolderIcon,
@@ -15,7 +17,6 @@ import {
   ListBulletIcon,
   MagnifyingGlassIcon,
   BellIcon,
-  UserCircleIcon,
   CheckCircleIcon,
   ChevronDoubleRightIcon,
   ChevronDoubleLeftIcon,
@@ -65,6 +66,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { user, login, logout, isLoading } = useAuth();
   const pathname = usePathname();
 
   return (
@@ -146,10 +148,12 @@ export function AppLayout({ children }: AppLayoutProps) {
             </Button>
 
             {/* Profile */}
-            <Button variant="ghost" size="icon">
-              <UserCircleIcon className="h-6 w-6" />
-              <span className="sr-only">Your profile</span>
-            </Button>
+            <UserProfileMenu 
+              user={user}
+              onLogin={login}
+              onLogout={logout}
+              isLoading={isLoading}
+            />
           </div>
         </div>
 
