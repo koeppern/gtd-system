@@ -184,6 +184,15 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
     return task.done_at !== null;
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    } catch (error) {
+      return dateString; // fallback to original string if parsing fails
+    }
+  };
+
   if (tasks.length === 0) {
     return (
       <Card>
@@ -327,7 +336,7 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
                     return (
                       <td key={columnKey} className="py-3 px-4">
                         <span className="text-xs text-muted-foreground">
-                          {new Date(task.created_at).toLocaleDateString()}
+                          {formatDate(task.created_at)}
                         </span>
                       </td>
                     );
@@ -335,7 +344,7 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
                     return (
                       <td key={columnKey} className="py-3 px-4">
                         <span className="text-xs text-muted-foreground">
-                          {new Date(task.updated_at).toLocaleDateString()}
+                          {formatDate(task.updated_at)}
                         </span>
                       </td>
                     );

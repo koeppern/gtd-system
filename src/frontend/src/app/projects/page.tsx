@@ -88,29 +88,31 @@ export default function ProjectsPage() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="max-w-md">
-          <input
-            type="text"
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-          />
-        </div>
+        {/* Search and Pagination Row */}
+        <div className="flex items-center justify-between">
+          {/* Search */}
+          <div className="max-w-md">
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            />
+          </div>
 
-        {/* Pagination - Top */}
-        {totalItems > 0 && (
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalItems={totalItems}
-            itemsPerPage={pagination.itemsPerPage}
-            onPageChange={pagination.handlePageChange}
-            onShowAll={pagination.handleShowAll}
-            isShowingAll={pagination.isShowingAll}
-            className="mb-4"
-          />
-        )}
+          {/* Pagination - Top */}
+          {totalItems > 0 && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalItems={totalItems}
+              itemsPerPage={pagination.itemsPerPage}
+              onPageChange={pagination.handlePageChange}
+              onShowAll={pagination.handleShowAll}
+              isShowingAll={pagination.isShowingAll}
+            />
+          )}
+        </div>
 
         {/* Projects List */}
         <ProjectsList 

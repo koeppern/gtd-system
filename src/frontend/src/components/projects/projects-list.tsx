@@ -195,6 +195,15 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
     return project.done_at !== null || project.done_status === true;
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    } catch (error) {
+      return dateString; // fallback to original string if parsing fails
+    }
+  };
+
   if (projects.length === 0) {
     return (
       <Card>
@@ -300,7 +309,7 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                     return (
                       <td key={columnKey} className="py-3 px-4">
                         <span className="text-xs text-muted-foreground">
-                          {new Date(project.created_at).toLocaleDateString()}
+                          {formatDate(project.created_at)}
                         </span>
                       </td>
                     );
@@ -308,7 +317,7 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                     return (
                       <td key={columnKey} className="py-3 px-4">
                         <span className="text-xs text-muted-foreground">
-                          {new Date(project.updated_at).toLocaleDateString()}
+                          {formatDate(project.updated_at)}
                         </span>
                       </td>
                     );
