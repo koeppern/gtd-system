@@ -76,7 +76,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         sidebarOpen ? 'block' : 'hidden'
       )}>
         <div className="fixed inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 w-64 bg-background border-r border-border">
+        <div className={cn(
+          "fixed inset-y-0 left-0 w-64 bg-background border-r border-border",
+          !user && "blur-sm"
+        )}>
           <SidebarContent 
             onItemClick={() => setSidebarOpen(false)} 
             pathname={pathname} 
@@ -89,7 +92,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Desktop sidebar */}
       <div className={cn(
         "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:block lg:bg-background lg:border-r lg:border-border transition-all duration-300 ease-in-out",
-        sidebarCollapsed ? "lg:w-16" : "lg:w-64"
+        sidebarCollapsed ? "lg:w-16" : "lg:w-64",
+        !user && "blur-sm"
       )}>
         <SidebarContent 
           pathname={pathname} 
@@ -108,7 +112,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className={cn("lg:hidden", !user && "blur-sm")}
             onClick={() => setSidebarOpen(true)}
           >
             <Bars3Icon className="h-6 w-6" />
@@ -116,13 +120,17 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Button>
 
           {/* Search */}
-          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+          <div className={cn(
+            "flex flex-1 gap-x-4 self-stretch lg:gap-x-6",
+            !user && "blur-sm"
+          )}>
             <div className="relative flex flex-1 items-center">
               <MagnifyingGlassIcon className="pointer-events-none absolute left-3 h-5 w-5 text-muted-foreground" />
               <input
                 className="block h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 placeholder="Search tasks, projects..."
                 type="search"
+                disabled={!user}
               />
             </div>
           </div>
@@ -134,13 +142,14 @@ export function AppLayout({ children }: AppLayoutProps) {
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={cn(!user && "blur-sm")}
             >
               <SunIcon className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <MoonIcon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
 
-            {/* Profile */}
+            {/* Profile - Always sharp for login access */}
             <UserProfileMenu 
               user={user}
               onLogin={login}
@@ -151,7 +160,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="px-4 py-8 sm:px-6 lg:px-8">
+        <main className={cn(
+          "px-4 py-8 sm:px-6 lg:px-8",
+          !user && "blur-sm"
+        )}>
           {children}
         </main>
       </div>
