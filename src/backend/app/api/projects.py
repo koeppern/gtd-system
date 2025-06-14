@@ -55,16 +55,32 @@ async def get_projects(
         # Execute query with bypass_rls option if available
         result = query.execute()
         
-        # Transform data to match expected format and get task counts
+        # Get all project IDs for batch task counting
+        project_ids = [project["id"] for project in result.data]
+        
+        # Batch query to get task counts for all projects
+        task_counts = {}
+        if project_ids:
+            # Get task counts in a single query using aggregation
+            try:
+                # For now, we'll use the existing count approach but limit to the project IDs we need
+                all_tasks_result = supabase.table("gtd_tasks").select("project_id") \
+                    .in_("project_id", project_ids) \
+                    .is_("deleted_at", "null") \
+                    .execute()
+                
+                # Count tasks per project in Python (more efficient than N queries)
+                for task in all_tasks_result.data:
+                    project_id = task["project_id"]
+                    task_counts[project_id] = task_counts.get(project_id, 0) + 1
+            except Exception as e:
+                print(f"Error fetching task counts: {e}")
+                # Continue without task counts
+        
+        # Transform data to match expected format
         projects = []
         for project in result.data:
-            # Count tasks for this project
-            task_count_result = supabase.table("gtd_tasks").select("id", count="exact") \
-                .eq("project_id", project["id"]) \
-                .is_("deleted_at", "null") \
-                .execute()
-            
-            task_count = task_count_result.count if task_count_result.count is not None else 0
+            task_count = task_counts.get(project["id"], 0)
             
             projects.append({
                 "id": project["id"],
