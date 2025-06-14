@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
 import { ResizableTable, useResizableColumns } from '@/components/ui/resizable-table';
+import { useGroupBy } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
 import { 
   FolderIcon,
@@ -34,9 +35,10 @@ interface ProjectsListProps {
   projects: Project[];
   isLoading: boolean;
   showCompleted: boolean;
+  groupBy?: string | null;
 }
 
-export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsListProps) {
+export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: ProjectsListProps) {
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'tasks' | 'created' | 'updated'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
@@ -204,6 +206,30 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
     }
   };
 
+  // Function to get group value for a project
+  const getGroupValue = (project: Project, key: string): string | number | null => {
+    switch (key) {
+      case 'status':
+        return isCompleted(project) ? 'Completed' : 'Active';
+      case 'field':
+        return project.field_id ? `Field ${project.field_id}` : 'No Field';
+      case 'task_count':
+        const count = project.task_count || 0;
+        if (count === 0) return '0 tasks';
+        if (count <= 5) return '1-5 tasks';
+        if (count <= 10) return '6-10 tasks';
+        if (count <= 20) return '11-20 tasks';
+        return '20+ tasks';
+      case 'do_this_week':
+        return project.do_this_week ? 'This Week' : 'Not This Week';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  // Group projects if groupBy is selected
+  const groupedProjects = useGroupBy(sortedProjects, groupBy, getGroupValue);
+
   if (projects.length === 0) {
     return (
       <Card>
@@ -228,18 +254,34 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
       {/* Summary */}
       <div className="text-sm text-muted-foreground">
         Showing {projects.length} {showCompleted ? 'total' : 'active'} projects
+        {groupBy && ` grouped by ${groupBy}`}
       </div>
 
-      {/* Resizable Table */}
-      <Card>
-        <CardContent className="p-0">
-          <ResizableTable 
-            columns={columns} 
-            onColumnResize={handleColumnResize}
-            onColumnReorder={handleColumnReorder}
-            className="text-sm"
-          >
-            {sortedProjects.map((project, index) => {
+      {/* Grouped Tables or Single Table */}
+      {groupedProjects.map((group, groupIndex) => (
+        <div key={group.groupName || 'main'} className="space-y-4">
+          {/* Group Header (only show if there's a grouping) */}
+          {groupBy && group.groupName && (
+            <div className="flex items-center space-x-2 pt-4">
+              <h3 className="text-lg font-semibold text-foreground">
+                {group.groupName}
+              </h3>
+              <Badge variant="secondary" className="text-xs">
+                {group.items.length} project{group.items.length !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+          )}
+
+          {/* Resizable Table */}
+          <Card>
+            <CardContent className="p-0">
+              <ResizableTable 
+                columns={columns} 
+                onColumnResize={handleColumnResize}
+                onColumnReorder={handleColumnReorder}
+                className="text-sm"
+              >
+                {group.items.map((project, index) => {
               const renderCell = (columnKey: string) => {
                 switch (columnKey) {
                   case 'no':
@@ -338,32 +380,36 @@ export function ProjectsList({ projects, isLoading, showCompleted }: ProjectsLis
                 }
               };
 
-              return (
-                <tr 
-                  key={project.id} 
-                  className="border-b border-border hover:bg-muted/50 transition-colors"
-                >
-                  {columns.map((col) => renderCell(col.key))}
-                </tr>
-              );
-            })}
-          </ResizableTable>
-        </CardContent>
-      </Card>
+                  return (
+                    <tr 
+                      key={project.id} 
+                      className="border-b border-border hover:bg-muted/50 transition-colors"
+                    >
+                      {columns.map((col) => renderCell(col.key))}
+                    </tr>
+                  );
+                })}
+              </ResizableTable>
+            </CardContent>
+          </Card>
+        </div>
+      ))}
 
       {/* Additional Summary */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <FolderIconSolid className="h-4 w-4 text-blue-600" />
-            <span>{sortedProjects.filter(p => !isCompleted(p)).length} Active</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CheckCircleIconSolid className="h-4 w-4 text-green-600" />
-            <span>{sortedProjects.filter(p => isCompleted(p)).length} Completed</span>
+      {!groupBy && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <FolderIconSolid className="h-4 w-4 text-blue-600" />
+              <span>{projects.filter(p => !isCompleted(p)).length} Active</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircleIconSolid className="h-4 w-4 text-green-600" />
+              <span>{projects.filter(p => isCompleted(p)).length} Completed</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

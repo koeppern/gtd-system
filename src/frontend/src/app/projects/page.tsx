@@ -5,11 +5,21 @@ import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProjectsList } from '@/components/projects/projects-list';
 import { Pagination, usePagination } from '@/components/ui/pagination';
+import { GroupByDropdown, GroupByOption } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
 
 export default function ProjectsPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+
+  // Define grouping options for projects (only meaningful columns)
+  const groupByOptions: GroupByOption[] = [
+    { key: 'status', label: 'Status', enabled: true },
+    { key: 'field', label: 'Field', enabled: true },
+    { key: 'task_count', label: 'Task Count', enabled: true },
+    { key: 'do_this_week', label: 'Do This Week', enabled: true },
+  ];
 
   // First, get total count to initialize pagination
   const { data: totalCountData } = useQuery({
@@ -88,8 +98,8 @@ export default function ProjectsPage() {
           </div>
         </div>
 
-        {/* Search and Pagination Row */}
-        <div className="flex items-center justify-between">
+        {/* Search, Group By and Pagination Row */}
+        <div className="flex items-center justify-between gap-4">
           {/* Search */}
           <div className="max-w-md">
             <input
@@ -101,17 +111,27 @@ export default function ProjectsPage() {
             />
           </div>
 
-          {/* Pagination - Top */}
-          {totalItems > 0 && (
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalItems={totalItems}
-              itemsPerPage={pagination.itemsPerPage}
-              onPageChange={pagination.handlePageChange}
-              onShowAll={pagination.handleShowAll}
-              isShowingAll={pagination.isShowingAll}
+          {/* Controls Row */}
+          <div className="flex items-center space-x-4">
+            {/* Group By Dropdown */}
+            <GroupByDropdown
+              options={groupByOptions}
+              selectedGroupBy={groupBy}
+              onGroupByChange={setGroupBy}
             />
-          )}
+
+            {/* Pagination - Top */}
+            {totalItems > 0 && (
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalItems={totalItems}
+                itemsPerPage={pagination.itemsPerPage}
+                onPageChange={pagination.handlePageChange}
+                onShowAll={pagination.handleShowAll}
+                isShowingAll={pagination.isShowingAll}
+              />
+            )}
+          </div>
         </div>
 
         {/* Projects List */}
@@ -119,6 +139,7 @@ export default function ProjectsPage() {
           projects={Array.isArray(projectsData) ? projectsData : (projectsData?.items || [])} 
           isLoading={isLoading}
           showCompleted={showCompleted}
+          groupBy={groupBy}
         />
 
         {/* Pagination - Bottom */}

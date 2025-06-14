@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
 import { ResizableTable, useResizableColumns } from '@/components/ui/resizable-table';
+import { useGroupBy } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
 import { 
   ClockIcon,
@@ -45,9 +46,10 @@ interface TasksListProps {
   tasks: Task[];
   isLoading: boolean;
   showCompleted: boolean;
+  groupBy?: string | null;
 }
 
-export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
+export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksListProps) {
   const [sortBy, setSortBy] = useState<'name' | 'project' | 'priority' | 'created' | 'updated'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
@@ -193,6 +195,35 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
     }
   };
 
+  // Function to get group value for a task
+  const getGroupValue = (task: Task, key: string): string | number | null => {
+    switch (key) {
+      case 'project':
+        return task.project_name || 'No Project';
+      case 'status':
+        return isCompleted(task) ? 'Completed' : 'Active';
+      case 'priority':
+        return task.priority || 0;
+      case 'field':
+        return task.field_id ? `Field ${task.field_id}` : 'No Field';
+      case 'do_today':
+        return task.do_today ? 'Today' : 'Not Today';
+      case 'do_this_week':
+        return task.do_this_week ? 'This Week' : 'Not This Week';
+      case 'is_reading':
+        return task.is_reading ? 'Reading' : 'Not Reading';
+      case 'wait_for':
+        return task.wait_for ? 'Waiting' : 'Not Waiting';
+      case 'postponed':
+        return task.postponed ? 'Postponed' : 'Not Postponed';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  // Group tasks if groupBy is selected
+  const groupedTasks = useGroupBy(sortedTasks, groupBy, getGroupValue);
+
   if (tasks.length === 0) {
     return (
       <Card>
@@ -217,18 +248,34 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
       {/* Summary */}
       <div className="text-sm text-muted-foreground">
         Showing {tasks.length} {showCompleted ? 'total' : 'active'} tasks
+        {groupBy && ` grouped by ${groupBy}`}
       </div>
 
-      {/* Resizable Table */}
-      <Card>
-        <CardContent className="p-0">
-          <ResizableTable 
-            columns={columns} 
-            onColumnResize={handleColumnResize}
-            onColumnReorder={handleColumnReorder}
-            className="text-sm"
-          >
-            {sortedTasks.map((task, index) => {
+      {/* Grouped Tables or Single Table */}
+      {groupedTasks.map((group, groupIndex) => (
+        <div key={group.groupName || 'main'} className="space-y-4">
+          {/* Group Header (only show if there's a grouping) */}
+          {groupBy && group.groupName && (
+            <div className="flex items-center space-x-2 pt-4">
+              <h3 className="text-lg font-semibold text-foreground">
+                {group.groupName}
+              </h3>
+              <Badge variant="secondary" className="text-xs">
+                {group.items.length} task{group.items.length !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+          )}
+
+          {/* Resizable Table */}
+          <Card>
+            <CardContent className="p-0">
+              <ResizableTable 
+                columns={columns} 
+                onColumnResize={handleColumnResize}
+                onColumnReorder={handleColumnReorder}
+                className="text-sm"
+              >
+                {group.items.map((task, index) => {
               const renderCell = (columnKey: string) => {
                 switch (columnKey) {
                   case 'no':
@@ -365,18 +412,20 @@ export function TasksList({ tasks, isLoading, showCompleted }: TasksListProps) {
                 }
               };
 
-              return (
-                <tr 
-                  key={task.id} 
-                  className="border-b border-border hover:bg-muted/50 transition-colors"
-                >
-                  {columns.map((col) => renderCell(col.key))}
-                </tr>
-              );
-            })}
-          </ResizableTable>
-        </CardContent>
-      </Card>
+                  return (
+                    <tr 
+                      key={task.id} 
+                      className="border-b border-border hover:bg-muted/50 transition-colors"
+                    >
+                      {columns.map((col) => renderCell(col.key))}
+                    </tr>
+                  );
+                })}
+              </ResizableTable>
+            </CardContent>
+          </Card>
+        </div>
+      ))}
     </div>
   );
 }

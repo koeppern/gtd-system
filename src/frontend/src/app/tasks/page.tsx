@@ -5,11 +5,26 @@ import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/app-layout';
 import { TasksList } from '@/components/tasks/tasks-list';
 import { Pagination, usePagination } from '@/components/ui/pagination';
+import { GroupByDropdown, GroupByOption } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
 
 export default function TasksPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+
+  // Define grouping options for tasks (only meaningful columns)
+  const groupByOptions: GroupByOption[] = [
+    { key: 'project', label: 'Project', enabled: true },
+    { key: 'status', label: 'Status', enabled: true },
+    { key: 'priority', label: 'Priority', enabled: true },
+    { key: 'field', label: 'Field', enabled: true },
+    { key: 'do_today', label: 'Do Today', enabled: true },
+    { key: 'do_this_week', label: 'Do This Week', enabled: true },
+    { key: 'is_reading', label: 'Reading Tasks', enabled: true },
+    { key: 'wait_for', label: 'Waiting For', enabled: true },
+    { key: 'postponed', label: 'Postponed', enabled: true },
+  ];
 
   // First, get total count to initialize pagination
   const { data: totalCountData } = useQuery({
@@ -97,8 +112,8 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* Search and Pagination Row */}
-        <div className="flex items-center justify-between">
+        {/* Search, Group By and Pagination Row */}
+        <div className="flex items-center justify-between gap-4">
           {/* Search */}
           <div className="max-w-md">
             <input
@@ -110,17 +125,27 @@ export default function TasksPage() {
             />
           </div>
 
-          {/* Pagination - Top */}
-          {totalItems > 0 && (
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalItems={totalItems}
-              itemsPerPage={pagination.itemsPerPage}
-              onPageChange={pagination.handlePageChange}
-              onShowAll={pagination.handleShowAll}
-              isShowingAll={pagination.isShowingAll}
+          {/* Controls Row */}
+          <div className="flex items-center space-x-4">
+            {/* Group By Dropdown */}
+            <GroupByDropdown
+              options={groupByOptions}
+              selectedGroupBy={groupBy}
+              onGroupByChange={setGroupBy}
             />
-          )}
+
+            {/* Pagination - Top */}
+            {totalItems > 0 && (
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalItems={totalItems}
+                itemsPerPage={pagination.itemsPerPage}
+                onPageChange={pagination.handlePageChange}
+                onShowAll={pagination.handleShowAll}
+                isShowingAll={pagination.isShowingAll}
+              />
+            )}
+          </div>
         </div>
 
         {/* Tasks List */}
@@ -128,6 +153,7 @@ export default function TasksPage() {
           tasks={Array.isArray(tasksData) ? tasksData : (tasksData?.items || [])} 
           isLoading={isLoading}
           showCompleted={showCompleted}
+          groupBy={groupBy}
         />
 
         {/* Pagination - Bottom */}
