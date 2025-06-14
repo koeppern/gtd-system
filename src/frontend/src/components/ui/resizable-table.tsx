@@ -215,77 +215,107 @@ export function ResizableTable({
   );
 }
 
-// Hook to persist column widths and order in localStorage
+// Hook to persist column widths and order in database
 export function useResizableColumns(tableKey: string, defaultColumns: ResizableTableProps['columns']) {
   const [columns, setColumns] = useState(defaultColumns);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Import api dynamically to avoid circular imports
+  const loadSettings = async () => {
+    try {
+      const { api } = await import('@/lib/api');
+      
+      // Load stored column configuration from database
+      const [widthsSetting, orderSetting] = await Promise.all([
+        api.userSettings.get(`table-${tableKey}-widths`).catch(() => null),
+        api.userSettings.get(`table-${tableKey}-order`).catch(() => null)
+      ]);
+      
+      let updatedColumns = [...defaultColumns];
+      
+      // Apply stored order first
+      if (orderSetting && Array.isArray(orderSetting)) {
+        try {
+          const orderedColumns = orderSetting
+            .map((key: string) => defaultColumns.find(col => col.key === key))
+            .filter(Boolean);
+          
+          // Add any new columns that weren't in the stored order
+          const existingKeys = new Set(orderSetting);
+          const newColumns = defaultColumns.filter(col => !existingKeys.has(col.key));
+          
+          updatedColumns = [...orderedColumns, ...newColumns];
+        } catch (e) {
+          console.warn('Failed to parse stored column order');
+        }
+      }
+      
+      // Apply stored widths
+      if (widthsSetting && typeof widthsSetting === 'object') {
+        try {
+          updatedColumns = updatedColumns.map(col => ({
+            ...col,
+            width: widthsSetting[col.key] || col.width || 150
+          }));
+        } catch (e) {
+          console.warn('Failed to parse stored column widths');
+        }
+      }
+      
+      setColumns(updatedColumns);
+    } catch (error) {
+      console.warn('Failed to load user settings, using defaults:', error);
+      setColumns(defaultColumns);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Load stored column configuration
-    const storedWidths = localStorage.getItem(`table-${tableKey}-widths`);
-    const storedOrder = localStorage.getItem(`table-${tableKey}-order`);
-    
-    let updatedColumns = [...defaultColumns];
-    
-    // Apply stored order first
-    if (storedOrder) {
-      try {
-        const order = JSON.parse(storedOrder);
-        const orderedColumns = order
-          .map((key: string) => defaultColumns.find(col => col.key === key))
-          .filter(Boolean);
-        
-        // Add any new columns that weren't in the stored order
-        const existingKeys = new Set(order);
-        const newColumns = defaultColumns.filter(col => !existingKeys.has(col.key));
-        
-        updatedColumns = [...orderedColumns, ...newColumns];
-      } catch (e) {
-        console.warn('Failed to parse stored column order');
-      }
-    }
-    
-    // Apply stored widths
-    if (storedWidths) {
-      try {
-        const widths = JSON.parse(storedWidths);
-        updatedColumns = updatedColumns.map(col => ({
-          ...col,
-          width: widths[col.key] || col.width || 150
-        }));
-      } catch (e) {
-        console.warn('Failed to parse stored column widths');
-      }
-    }
-    
-    setColumns(updatedColumns);
+    loadSettings();
   }, [tableKey]);
 
-  const handleColumnResize = (columnKey: string, width: number) => {
+  const handleColumnResize = async (columnKey: string, width: number) => {
     const updatedColumns = columns.map(col => 
       col.key === columnKey ? { ...col, width } : col
     );
     setColumns(updatedColumns);
 
-    // Save widths to localStorage
+    // Save widths to database
     const widths = updatedColumns.reduce((acc, col) => {
       acc[col.key] = col.width || 150;
       return acc;
     }, {} as Record<string, number>);
     
-    localStorage.setItem(`table-${tableKey}-widths`, JSON.stringify(widths));
+    try {
+      const { api } = await import('@/lib/api');
+      await api.userSettings.update(`table-${tableKey}-widths`, widths);
+    } catch (error) {
+      console.warn('Failed to save column widths to database:', error);
+      // Fallback to localStorage
+      localStorage.setItem(`table-${tableKey}-widths`, JSON.stringify(widths));
+    }
   };
 
-  const handleColumnReorder = (fromIndex: number, toIndex: number) => {
+  const handleColumnReorder = async (fromIndex: number, toIndex: number) => {
     const newColumns = [...columns];
     const [movedColumn] = newColumns.splice(fromIndex, 1);
     newColumns.splice(toIndex, 0, movedColumn);
     
     setColumns(newColumns);
     
-    // Save order to localStorage
+    // Save order to database
     const order = newColumns.map(col => col.key);
-    localStorage.setItem(`table-${tableKey}-order`, JSON.stringify(order));
+    
+    try {
+      const { api } = await import('@/lib/api');
+      await api.userSettings.update(`table-${tableKey}-order`, order);
+    } catch (error) {
+      console.warn('Failed to save column order to database:', error);
+      // Fallback to localStorage
+      localStorage.setItem(`table-${tableKey}-order`, JSON.stringify(order));
+    }
   };
 
-  return { columns, handleColumnResize, handleColumnReorder };
+  return { columns, handleColumnResize, handleColumnReorder, isLoading };
 }
