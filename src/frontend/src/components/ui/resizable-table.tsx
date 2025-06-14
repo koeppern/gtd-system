@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
@@ -34,6 +34,7 @@ export function ResizableTable({
   });
 
   const [resizing, setResizing] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
   const startX = useRef(0);
   const startWidth = useRef(0);
@@ -52,16 +53,18 @@ export function ResizableTable({
 
   const handleMouseDown = (e: React.MouseEvent, columnKey: string) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('Mouse down on resize handle for column:', columnKey);
     setResizing(columnKey);
+    setIsDragging(true);
     startX.current = e.clientX;
     startWidth.current = columnWidths[columnKey];
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!resizing) return;
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!resizing || !isDragging) return;
+    
+    console.log('Mouse move - resizing:', resizing, 'isDragging:', isDragging);
     
     const diff = e.clientX - startX.current;
     const newWidth = Math.max(50, startWidth.current + diff); // Minimum 50px
@@ -78,23 +81,44 @@ export function ResizableTable({
         [resizing]: clampedWidth
       }));
     }
-  };
+  }, [resizing, isDragging, columns]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
+    console.log('Mouse up - resizing:', resizing);
     if (resizing && onColumnResize) {
-      onColumnResize(resizing, columnWidths[resizing]);
+      const currentWidth = columnWidths[resizing];
+      onColumnResize(resizing, currentWidth);
     }
     setResizing(null);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
+    setIsDragging(false);
+  }, [resizing, onColumnResize, columnWidths]);
 
+  // Attach and detach event listeners when resizing state changes
+  useEffect(() => {
+    if (resizing && isDragging) {
+      console.log('Adding event listeners for resizing:', resizing);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        console.log('Removing event listeners for resizing:', resizing);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [resizing, isDragging, handleMouseMove, handleMouseUp]);
+
+  // Cleanup event listeners on unmount
   useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [handleMouseMove, handleMouseUp]);
 
   // Create style object for column widths
   const columnStyles = columns.reduce((styles, col, index) => {
@@ -106,7 +130,7 @@ export function ResizableTable({
     <div className="overflow-x-auto">
       <table 
         ref={tableRef}
-        className={cn("w-full table-fixed", className)}
+        className={cn("w-full table-fixed", className, isDragging && "select-none")}
         style={columnStyles as React.CSSProperties}
       >
         <colgroup>
@@ -167,13 +191,16 @@ export function ResizableTable({
                 {index < columns.length - 1 && (
                   <div
                     className={cn(
-                      "absolute top-0 right-0 w-1 h-full cursor-col-resize",
-                      "hover:bg-primary/20 transition-colors",
-                      resizing === col.key && "bg-primary/40"
+                      "absolute top-0 right-0 w-2 h-full cursor-col-resize bg-transparent",
+                      "hover:bg-primary/30 transition-colors border-r-2 border-transparent",
+                      "hover:border-primary/50",
+                      resizing === col.key && "bg-primary/40 border-primary"
                     )}
                     onMouseDown={(e) => handleMouseDown(e, col.key)}
+                    title="Drag to resize column"
                   >
-                    <div className="absolute right-0 top-0 w-4 h-full -mr-2" />
+                    {/* Expanded clickable area */}
+                    <div className="absolute right-0 top-0 w-6 h-full -mr-3 cursor-col-resize" />
                   </div>
                 )}
               </th>
