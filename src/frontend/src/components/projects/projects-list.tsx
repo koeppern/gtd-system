@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ import { useGroupBy } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
 import { 
   FolderIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { 
   FolderIcon as FolderIconSolid,
@@ -44,84 +47,81 @@ interface ProjectsListProps {
   groupBy?: string | null;
 }
 
+type SortableColumn = 'name' | 'field' | 'status' | 'tasks' | 'keywords' | 'mother_project' | 'readings' | 'gtd_processes' | 'created' | 'updated';
+
 export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: ProjectsListProps) {
-  const [sortBy, setSortBy] = useState<'name' | 'status' | 'tasks' | 'created' | 'updated'>('name');
+  const [sortBy, setSortBy] = useState<SortableColumn>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
+
+  // Auto-sort by grouped column when grouping changes
+  React.useEffect(() => {
+    if (groupBy && groupBy !== sortBy) {
+      // Map groupBy values to sortable columns
+      const groupToColumnMap: Record<string, SortableColumn> = {
+        'status': 'status',
+        'field': 'field',
+        'task_count': 'tasks'
+      };
+      
+      const newSortBy = groupToColumnMap[groupBy] || 'name';
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  }, [groupBy, sortBy]);
+
+  const handleSort = (newSortBy: SortableColumn) => {
+    if (sortBy === newSortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  };
+
+  // Helper component for sortable column headers
+  const SortableHeader = ({ column, children, className = "" }: { 
+    column: SortableColumn; 
+    children: React.ReactNode; 
+    className?: string;
+  }) => {
+    const isActive = sortBy === column;
+    
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSort(column);
+        }}
+        className={`flex items-center space-x-1 hover:text-foreground transition-colors cursor-pointer text-left w-full p-0 bg-transparent border-none ${className}`}
+      >
+        <span>{children}</span>
+        {isActive && (
+          sortOrder === 'asc' ? 
+            <ChevronUpIcon className="h-3 w-3 text-blue-600 ml-1" /> : 
+            <ChevronDownIcon className="h-3 w-3 text-blue-600 ml-1" />
+        )}
+      </button>
+    );
+  };
 
   // Define resizable columns
   const defaultColumns = [
-    { key: 'no', title: 'No', width: 60, minWidth: 40, maxWidth: 100 },
-    { key: 'name', title: (
-      <button
-        onClick={() => handleSort('name')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Project Name</span>
-        {sortBy === 'name' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 300, minWidth: 150, maxWidth: 500 },
-    { key: 'field', title: 'Field', width: 120, minWidth: 80, maxWidth: 200 },
-    { key: 'status', title: (
-      <button
-        onClick={() => handleSort('status')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Status</span>
-        {sortBy === 'status' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 120, minWidth: 80, maxWidth: 200 },
-    { key: 'tasks', title: (
-      <button
-        onClick={() => handleSort('tasks')}
-        className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
-      >
-        <span>Tasks</span>
-        {sortBy === 'tasks' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 100, minWidth: 70, maxWidth: 150 },
-    { key: 'keywords', title: 'Keywords', width: 150, minWidth: 100, maxWidth: 250 },
-    { key: 'mother_project', title: 'Parent Project', width: 150, minWidth: 100, maxWidth: 250 },
-    { key: 'readings', title: 'Readings', width: 120, minWidth: 80, maxWidth: 200 },
-    { key: 'gtd_processes', title: 'GTD Processes', width: 130, minWidth: 100, maxWidth: 200 },
-    { key: 'created', title: (
-      <button
-        onClick={() => handleSort('created')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Created</span>
-        {sortBy === 'created' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 120, minWidth: 100, maxWidth: 180 },
-    { key: 'updated', title: (
-      <button
-        onClick={() => handleSort('updated')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Last Updated</span>
-        {sortBy === 'updated' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 140, minWidth: 100, maxWidth: 200 },
+    { key: 'no', title: tCommon('table.no'), width: 60, minWidth: 40, maxWidth: 100 },
+    { key: 'name', title: <SortableHeader column="name">{t('table.projectName')}</SortableHeader>, width: 300, minWidth: 150, maxWidth: 500 },
+    { key: 'field', title: <SortableHeader column="field">{tCommon('table.field')}</SortableHeader>, width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'status', title: <SortableHeader column="status">{tCommon('table.status')}</SortableHeader>, width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'tasks', title: <SortableHeader column="tasks" className="w-full justify-center">{tCommon('table.tasks')}</SortableHeader>, width: 100, minWidth: 70, maxWidth: 150 },
+    { key: 'keywords', title: <SortableHeader column="keywords">{tCommon('table.keywords')}</SortableHeader>, width: 150, minWidth: 100, maxWidth: 250 },
+    { key: 'mother_project', title: <SortableHeader column="mother_project">{tCommon('table.parentProject')}</SortableHeader>, width: 150, minWidth: 100, maxWidth: 250 },
+    { key: 'readings', title: <SortableHeader column="readings">{tCommon('table.readings')}</SortableHeader>, width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'gtd_processes', title: <SortableHeader column="gtd_processes">{tCommon('table.gtdProcesses')}</SortableHeader>, width: 130, minWidth: 100, maxWidth: 200 },
+    { key: 'created', title: <SortableHeader column="created">{tCommon('table.created')}</SortableHeader>, width: 120, minWidth: 100, maxWidth: 180 },
+    { key: 'updated', title: <SortableHeader column="updated">{tCommon('table.lastUpdated')}</SortableHeader>, width: 140, minWidth: 100, maxWidth: 200 },
     { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
   ];
 
@@ -150,6 +150,10 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
         aValue = (a.project_name || a.name || '').toLowerCase();
         bValue = (b.project_name || b.name || '').toLowerCase();
         break;
+      case 'field':
+        aValue = (a.field_name || '').toLowerCase();
+        bValue = (b.field_name || '').toLowerCase();
+        break;
       case 'status':
         aValue = a.done_status ? 1 : 0;
         bValue = b.done_status ? 1 : 0;
@@ -157,6 +161,22 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
       case 'tasks':
         aValue = a.task_count || 0;
         bValue = b.task_count || 0;
+        break;
+      case 'keywords':
+        aValue = (a.keywords || '').toLowerCase();
+        bValue = (b.keywords || '').toLowerCase();
+        break;
+      case 'mother_project':
+        aValue = (a.mother_project || '').toLowerCase();
+        bValue = (b.mother_project || '').toLowerCase();
+        break;
+      case 'readings':
+        aValue = (a.readings || '').toLowerCase();
+        bValue = (b.readings || '').toLowerCase();
+        break;
+      case 'gtd_processes':
+        aValue = (a.gtd_processes || '').toLowerCase();
+        bValue = (b.gtd_processes || '').toLowerCase();
         break;
       case 'created':
         aValue = new Date(a.created_at).getTime();
@@ -178,31 +198,22 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
     }
   });
 
-  const handleSort = (newSortBy: 'name' | 'status' | 'tasks' | 'created' | 'updated') => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
-    }
-  };
-
   // Function to get group value for a project
   const getGroupValue = (project: Project, key: string): string | number | null => {
     switch (key) {
       case 'status':
-        return isCompleted(project) ? 'Completed' : 'Active';
+        return isCompleted(project) ? tCommon('status.completed') : tCommon('status.active');
       case 'field':
         return project.field_name || 'No Field';
       case 'task_count':
         const count = project.task_count || 0;
-        if (count === 0) return '0 tasks';
-        if (count <= 5) return '1-5 tasks';
-        if (count <= 10) return '6-10 tasks';
-        if (count <= 20) return '11-20 tasks';
-        return '20+ tasks';
+        if (count === 0) return t('taskCounts.zero');
+        if (count <= 5) return t('taskCounts.oneToFive');
+        if (count <= 10) return t('taskCounts.sixToTen');
+        if (count <= 20) return t('taskCounts.elevenToTwenty');
+        return t('taskCounts.twentyPlus');
       case 'do_this_week':
-        return project.do_this_week ? 'This Week' : 'Not This Week';
+        return project.do_this_week ? tCommon('status.thisWeek') : 'Not This Week';
       default:
         return 'Unknown';
     }
@@ -223,7 +234,7 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
   };
 
   // Group projects if groupBy is selected
-  const groupedProjects = useGroupBy(sortedProjects, groupBy, getGroupValue);
+  const groupedProjects = useGroupBy(sortedProjects, groupBy || null, getGroupValue);
 
   // Show loading state for data or columns
   if (isLoading || columnsLoading) {
@@ -249,12 +260,12 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
         <CardContent className="flex flex-col items-center justify-center py-12">
           <FolderIcon className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
-            {showCompleted ? 'No projects found' : 'No active projects'}
+            {showCompleted ? t('table.noProjectsFound') : t('table.noActiveProjects')}
           </h3>
           <p className="text-muted-foreground text-center max-w-md">
             {showCompleted 
-              ? 'No projects match your current search criteria.'
-              : 'You don\'t have any active projects yet. Create your first project to get started.'
+              ? t('table.noProjectsDescription')
+              : t('table.noActiveProjectsDescription')
             }
           </p>
         </CardContent>
@@ -266,8 +277,17 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
     <div className="space-y-6">
       {/* Summary */}
       <div className="text-sm text-muted-foreground">
-        Showing {projects.length} {showCompleted ? 'total' : 'active'} projects
-        {groupBy && ` grouped by ${groupBy}`}
+        {groupBy ? 
+          t('table.summaryWithGrouping', { 
+            count: projects.length, 
+            type: showCompleted ? 'total' : 'active', 
+            groupBy: groupBy 
+          }) :
+          t('table.summary', { 
+            count: projects.length, 
+            type: showCompleted ? 'total' : 'active'
+          })
+        }
       </div>
 
       {/* Single Table with Group Sections */}
@@ -290,7 +310,10 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                           {group.groupName}
                         </h3>
                         <Badge variant="secondary" className="text-xs">
-                          {group.items.length} project{group.items.length !== 1 ? 's' : ''}
+                          {t('table.projectsCount', { 
+                            count: group.items.length, 
+                            plural: group.items.length !== 1 ? 'e' : '' 
+                          })}
                         </Badge>
                       </div>
                     </td>
@@ -302,7 +325,7 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                   // Calculate global index across all groups
                   let globalIndex = 0;
                   for (let i = 0; i < groupIndex; i++) {
-                    globalIndex += groupedProjects[i].items.length;
+                    globalIndex += groupedProjects[i]?.items.length || 0;
                   }
                   globalIndex += index + 1;
 
@@ -333,13 +356,13 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                                 });
                               }}
                               className="font-medium text-foreground break-words"
-                              placeholder="Project name"
+                              placeholder={t('placeholders.projectName')}
                               disabled={updateProjectMutation.isPending}
                             />
                             {project.do_this_week && (
                               <div className="mt-1">
                                 <Badge variant="secondary" className="text-xs">
-                                  This Week
+                                  {tCommon('status.thisWeek')}
                                 </Badge>
                               </div>
                             )}
@@ -353,11 +376,11 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                         <div className="flex items-center space-x-2 flex-wrap">
                           {isCompleted(project) ? (
                             <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                              Completed
+                              {tCommon('status.completed')}
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="text-xs">
-                              Active
+                              {tCommon('status.active')}
                             </Badge>
                           )}
                         </div>
@@ -465,11 +488,11 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <FolderIconSolid className="h-4 w-4 text-blue-600" />
-              <span>{projects.filter(p => !isCompleted(p)).length} Active</span>
+              <span>{t('table.activeSummary', { count: projects.filter(p => !isCompleted(p)).length })}</span>
             </div>
             <div className="flex items-center space-x-2">
               <CheckCircleIconSolid className="h-4 w-4 text-green-600" />
-              <span>{projects.filter(p => isCompleted(p)).length} Completed</span>
+              <span>{t('table.completedSummary', { count: projects.filter(p => isCompleted(p)).length })}</span>
             </div>
           </div>
         </div>

@@ -4,11 +4,15 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserProfileMenu } from '@/components/ui/user-profile-menu';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { CentralLogin } from '@/components/auth/central-login';
 import { useAuth } from '@/contexts/auth-context';
+import { useLanguageSettings } from '@/hooks/use-language-settings';
+import { useKeyboardShortcuts, useSearchFieldRef } from '@/hooks/use-keyboard-shortcuts';
 import { 
   HomeIcon,
   FolderIcon,
@@ -39,21 +43,22 @@ interface NavItem {
   badge?: number;
 }
 
-const navigation: NavItem[] = [
+// Navigation items will be translated in the component
+const navigationKeys = [
   {
-    name: 'Dashboard',
+    nameKey: 'navigation.dashboard',
     href: '/',
     icon: HomeIcon,
     iconSolid: HomeIconSolid,
   },
   {
-    name: 'Projects',
+    nameKey: 'navigation.projects',
     href: '/projects',
     icon: FolderIcon,
     iconSolid: FolderIconSolid,
   },
   {
-    name: 'Tasks',
+    nameKey: 'navigation.tasks',
     href: '/tasks',
     icon: ListBulletIcon,
     iconSolid: ListBulletIconSolid,
@@ -69,6 +74,18 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { theme, setTheme } = useTheme();
   const { user, login, logout, isLoading } = useAuth();
   const pathname = usePathname();
+  const t = useTranslations('common');
+  
+  // Initialize language settings (will auto-load user preferences)
+  const { isLoading: _languageLoading } = useLanguageSettings();
+
+  // Search field refs and keyboard shortcuts
+  const { ref: globalSearchRef, searchFieldRef: globalSearchFieldRef } = useSearchFieldRef();
+  
+  // Initialize keyboard shortcuts for global search (CTRL-K)
+  useKeyboardShortcuts({
+    globalSearchRef: globalSearchFieldRef
+  });
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -134,7 +151,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             onClick={() => setSidebarOpen(true)}
           >
             <Bars3Icon className="h-6 w-6" />
-            <span className="sr-only">Open sidebar</span>
+            <span className="sr-only">{t('buttons.openSidebar')}</span>
           </Button>
 
           {/* Search */}
@@ -145,8 +162,9 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="relative flex flex-1 items-center">
               <MagnifyingGlassIcon className="pointer-events-none absolute left-3 h-5 w-5 text-muted-foreground" />
               <input
+                ref={globalSearchRef}
                 className="block h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                placeholder="Search tasks, projects..."
+                placeholder={t('search.globalPlaceholder')}
                 type="search"
                 disabled={!user}
               />
@@ -155,6 +173,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Right side */}
           <div className="flex items-center gap-x-4 lg:gap-x-6">
+            {/* Language switcher */}
+            <LanguageSwitcher />
+            
             {/* Theme toggle */}
             <Button
               variant="ghost"
@@ -164,7 +185,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               <SunIcon className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <MoonIcon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
+              <span className="sr-only">{t('buttons.toggleTheme')}</span>
             </Button>
 
             {/* Profile - Only show when logged in */}
@@ -210,6 +231,7 @@ function SidebarContent({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
+  const t = useTranslations('common');
   return (
     <div className="flex h-full flex-col">
       {/* Logo and Toggle */}
@@ -218,7 +240,7 @@ function SidebarContent({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <CheckCircleIcon className="h-5 w-5" />
           </div>
-          {!collapsed && <span className="text-xl font-bold">GTD</span>}
+          {!collapsed && <span className="text-xl font-bold">{t('navigation.gtd')}</span>}
         </div>
         
         {/* Toggle Button */}
@@ -235,7 +257,7 @@ function SidebarContent({
               <ChevronDoubleLeftIcon className="h-4 w-4" />
             )}
             <span className="sr-only">
-              {collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              {collapsed ? t('buttons.expandSidebar') : t('buttons.collapseSidebar')}
             </span>
           </Button>
         )}
@@ -252,11 +274,12 @@ function SidebarContent({
               "space-y-1",
               collapsed ? "mx-0" : "-mx-2"
             )}>
-              {navigation.map((item) => {
+              {navigationKeys.map((item) => {
                 const isCurrent = pathname === item.href;
                 const Icon = isCurrent ? item.iconSolid : item.icon;
+                const translatedName = t(item.nameKey as any);
                 return (
-                  <li key={item.name}>
+                  <li key={item.nameKey}>
                     <a
                       href={item.href}
                       onClick={onItemClick}
@@ -271,22 +294,12 @@ function SidebarContent({
                             : 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       )}
-                      title={collapsed ? item.name : undefined}
+                      title={collapsed ? translatedName : undefined}
                     >
                       <Icon className="h-6 w-6 shrink-0" />
                       {!collapsed && (
                         <>
-                          <span className="flex-1">{item.name}</span>
-                          {item.badge && (
-                            <span className={cn(
-                              'ml-auto inline-block rounded-full px-2 py-1 text-xs',
-                              isCurrent
-                                ? 'bg-primary-foreground text-primary'
-                                : 'bg-muted text-muted-foreground'
-                            )}>
-                              {item.badge}
-                            </span>
-                          )}
+                          <span className="flex-1">{translatedName}</span>
                         </>
                       )}
                     </a>

@@ -1,0 +1,46 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "tasks": "Tasks",
+    "gtd": "GTD"
+  },
+  "buttons": {
+    "active": "Active",
+    "allProjects": "All Projects",
+    "show": "Show:",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "openSidebar": "Open sidebar",
+    "toggleTheme": "Toggle theme"
+  },
+  "search": {
+    "globalPlaceholder": "GlobalSearch, CTRL-K",
+    "projectsPlaceholder": "ProjectSearch, CTRL-SHIFT-F",
+    "tasksPlaceholder": "TaskSearch, CTRL-SHIFT-F"
+  },
+  "table": {
+    "no": "No",
+    "name": "Name",
+    "status": "Status",
+    "field": "Field",
+    "tasks": "Tasks",
+    "keywords": "Keywords",
+    "parentProject": "Parent Project",
+    "readings": "Readings",
+    "gtdProcesses": "GTD Processes",
+    "created": "Created",
+    "lastUpdated": "Last Updated",
+    "actions": "Actions"
+  },
+  "status": {
+    "completed": "Completed",
+    "active": "Active",
+    "thisWeek": "This Week"
+  },
+  "common": {
+    "loading": "Loading...",
+    "noData": "No data available",
+    "error": "An error occurred"
+  }
+}

@@ -277,6 +277,7 @@ export interface UserSettings {
   theme: Theme;
   compact_view: boolean;
   show_completed: boolean;
+  preferred_language: string;
 }
 
 // Export utility types

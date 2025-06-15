@@ -2,23 +2,35 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProjectsList } from '@/components/projects/projects-list';
 import { Pagination, usePagination } from '@/components/ui/pagination';
 import { GroupByDropdown, GroupByOption } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
+import { useKeyboardShortcuts, useSearchFieldRef } from '@/hooks/use-keyboard-shortcuts';
 
 export default function ProjectsPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [groupBy, setGroupBy] = useState<string | null>(null);
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
+
+  // Search field refs and keyboard shortcuts for projects
+  const { ref: projectSearchRef, searchFieldRef: projectSearchFieldRef } = useSearchFieldRef();
+  
+  // Initialize keyboard shortcuts for context search (CTRL-SHIFT-F)
+  useKeyboardShortcuts({
+    contextSearchRef: projectSearchFieldRef
+  });
 
   // Define grouping options for projects (only meaningful columns)
   const groupByOptions: GroupByOption[] = [
-    { key: 'status', label: 'Status', enabled: true },
-    { key: 'field', label: 'Field', enabled: true },
-    { key: 'task_count', label: 'Task Count', enabled: true },
-    { key: 'do_this_week', label: 'Do This Week', enabled: true },
+    { key: 'status', label: t('grouping.status'), enabled: true },
+    { key: 'field', label: t('grouping.field'), enabled: true },
+    { key: 'task_count', label: t('grouping.taskCount'), enabled: true },
+    { key: 'do_this_week', label: t('grouping.doThisWeek'), enabled: true },
   ];
 
   // Optimized queries with intelligent caching
@@ -65,9 +77,9 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             <p className="text-muted-foreground">
-              Manage your GTD projects and track progress
+              {t('description')}
             </p>
           </div>
           
@@ -75,7 +87,7 @@ export default function ProjectsPage() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-muted-foreground">
-                Show:
+                {tCommon('buttons.show')}
               </label>
               <div className="flex rounded-lg border border-border">
                 <button
@@ -86,7 +98,7 @@ export default function ProjectsPage() {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Active
+                  {tCommon('buttons.active')}
                 </button>
                 <button
                   onClick={() => setShowCompleted(true)}
@@ -96,7 +108,7 @@ export default function ProjectsPage() {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  All Projects
+                  {tCommon('buttons.allProjects')}
                 </button>
               </div>
             </div>
@@ -106,10 +118,11 @@ export default function ProjectsPage() {
         {/* Search, Group By and Pagination Row */}
         <div className="flex items-center justify-between gap-4">
           {/* Search */}
-          <div className="max-w-md">
+          <div className="max-w-4xl">
             <input
+              ref={projectSearchRef}
               type="text"
-              placeholder="Search projects..."
+              placeholder={tCommon('search.projectsPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"

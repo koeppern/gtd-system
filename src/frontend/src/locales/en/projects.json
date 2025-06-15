@@ -1,0 +1,32 @@
+{
+  "title": "Projects",
+  "description": "Manage your GTD projects and track progress",
+  "table": {
+    "projectName": "Project Name",
+    "summary": "Showing {count} {type} projects",
+    "summaryWithGrouping": "Showing {count} {type} projects grouped by {groupBy}",
+    "noProjectsFound": "No projects found",
+    "noActiveProjects": "No active projects",
+    "noProjectsDescription": "No projects match your current search criteria.",
+    "noActiveProjectsDescription": "You don't have any active projects yet. Create your first project to get started.",
+    "projectsCount": "{count} project{plural}",
+    "activeSummary": "{count} Active",
+    "completedSummary": "{count} Completed"
+  },
+  "grouping": {
+    "status": "Status",
+    "field": "Field", 
+    "taskCount": "Task Count",
+    "doThisWeek": "Do This Week"
+  },
+  "taskCounts": {
+    "zero": "0 tasks",
+    "oneToFive": "1-5 tasks",
+    "sixToTen": "6-10 tasks", 
+    "elevenToTwenty": "11-20 tasks",
+    "twentyPlus": "20+ tasks"
+  },
+  "placeholders": {
+    "projectName": "Project name"
+  }
+}

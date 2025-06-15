@@ -23,6 +23,7 @@
 1. **Virtual Environment ist Pflicht** - Niemals Python-Pakete global installieren
 2. **Tests erstellen** - Nach jeder Implementierung sinnvolle Tests schreiben
 3. **Tests ausführen** - Alle Tests müssen vor einem Commit erfolgreich durchlaufen
+4. **Always add test when sensitive after a new feature was implemented**
 
 ## Automatische Git-Commits
 

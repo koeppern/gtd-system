@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { createCacheInvalidator, type CacheInvalidator } from '@/lib/cache-utils';
+import { createCacheInvalidator } from '@/lib/cache-utils';
 
 // Create optimized query client with intelligent caching
 const queryClient = new QueryClient({
@@ -28,7 +28,7 @@ const queryClient = new QueryClient({
     mutations: {
       retry: false,
       // Optimistic updates enabled by default
-      onError: (error, variables, context) => {
+      onError: (error, _variables, _context) => {
         console.warn('Mutation failed:', error);
       },
     },

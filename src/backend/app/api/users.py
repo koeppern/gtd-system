@@ -3,6 +3,7 @@ User API endpoints with device-specific settings support
 """
 from fastapi import APIRouter, HTTPException, Body, Query, Depends
 from app.database import get_supabase_client
+from app.dependencies import get_current_user
 from supabase import Client
 import json
 from typing import Dict, Any, Optional, Literal
@@ -14,14 +15,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 DeviceType = Literal["desktop", "tablet", "phone"]
 
 @router.get("/me")
-async def get_current_user_info() -> dict:
+async def get_current_user_info(current_user: dict = Depends(get_current_user)) -> dict:
     """Get current user information"""
-    return {"message": "User endpoints not implemented yet"}
+    return {
+        "user_id": current_user.get("user_id") or current_user.get("sub"),
+        "email": current_user.get("email"),
+        "role": current_user.get("role", "authenticated")
+    }
 
 @router.get("/me/settings")
 async def get_user_settings(
-    user_id: str = "00000000-0000-0000-0000-000000000001",
     device: Optional[DeviceType] = None,
+    current_user: dict = Depends(get_current_user),
     supabase: Client = Depends(get_supabase_client)
 ) -> Dict[str, Any]:
     """
@@ -30,6 +35,8 @@ async def get_user_settings(
     If device is not specified, returns the full settings_json structure.
     """
     try:
+        user_id = current_user.get("user_id") or current_user.get("sub")
+        
         if device:
             # Get all setting keys
             setting_keys_result = supabase.table("gtd_setting_keys").select("key, default_value").execute()

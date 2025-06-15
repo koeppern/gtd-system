@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import {
   FolderIcon,
   BookOpenIcon,
   PauseIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import { 
   CheckCircleIcon as CheckCircleIconSolid,
@@ -55,12 +57,36 @@ interface TasksListProps {
   groupBy?: string | null;
 }
 
-export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksListProps) {
-  const [sortBy, setSortBy] = useState<'name' | 'project' | 'priority' | 'created' | 'updated'>('name');
+type SortableTaskColumn = 'name' | 'project' | 'field' | 'status' | 'priority' | 'do_on_date' | 'time_expenditure' | 'reviewed' | 'created' | 'updated';
+
+export function TasksList({ tasks, isLoading: _isLoading, showCompleted, groupBy }: TasksListProps) {
+  const [sortBy, setSortBy] = useState<SortableTaskColumn>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
 
-  const handleSort = (newSortBy: 'name' | 'project' | 'priority' | 'created' | 'updated') => {
+  // Auto-sort by grouped column when grouping changes
+  React.useEffect(() => {
+    if (groupBy && groupBy !== sortBy) {
+      // Map groupBy values to sortable columns
+      const groupToColumnMap: Record<string, SortableTaskColumn> = {
+        'project': 'project',
+        'status': 'status',
+        'priority': 'priority',
+        'field': 'field',
+        'do_today': 'status',
+        'do_this_week': 'status',
+        'is_reading': 'status',
+        'wait_for': 'status',
+        'postponed': 'status'
+      };
+      
+      const newSortBy = groupToColumnMap[groupBy] || 'name';
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  }, [groupBy, sortBy]);
+
+  const handleSort = (newSortBy: SortableTaskColumn) => {
     if (sortBy === newSortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -69,84 +95,52 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
     }
   };
 
+  // Helper component for sortable column headers
+  const SortableHeader = ({ column, children, className = "" }: { 
+    column: SortableTaskColumn; 
+    children: React.ReactNode; 
+    className?: string;
+  }) => {
+    const isActive = sortBy === column;
+    
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSort(column);
+        }}
+        className={`flex items-center space-x-1 hover:text-foreground transition-colors cursor-pointer text-left w-full p-0 bg-transparent border-none ${className}`}
+      >
+        <span>{children}</span>
+        {isActive && (
+          sortOrder === 'asc' ? 
+            <ChevronUpIcon className="h-3 w-3 text-blue-600 ml-1" /> : 
+            <ChevronDownIcon className="h-3 w-3 text-blue-600 ml-1" />
+        )}
+      </button>
+    );
+  };
+
   // Define resizable columns
   const defaultColumns = [
     { key: 'no', title: 'No', width: 60, minWidth: 40, maxWidth: 100 },
-    { key: 'name', title: (
-      <button
-        onClick={() => handleSort('name')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Task Name</span>
-        {sortBy === 'name' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 300, minWidth: 150, maxWidth: 500 },
-    { key: 'project', title: (
-      <button
-        onClick={() => handleSort('project')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Project</span>
-        {sortBy === 'project' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 180, minWidth: 100, maxWidth: 300 },
-    { key: 'field', title: 'Field', width: 120, minWidth: 80, maxWidth: 200 },
-    { key: 'status', title: 'Status', width: 120, minWidth: 80, maxWidth: 200 },
-    { key: 'priority', title: (
-      <button
-        onClick={() => handleSort('priority')}
-        className="flex items-center justify-center space-x-2 hover:text-foreground transition-colors w-full"
-      >
-        <span>Priority</span>
-        {sortBy === 'priority' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 100, minWidth: 70, maxWidth: 150 },
-    { key: 'do_on_date', title: 'Due Date', width: 120, minWidth: 100, maxWidth: 180 },
-    { key: 'time_expenditure', title: 'Time Est.', width: 100, minWidth: 80, maxWidth: 150 },
-    { key: 'reviewed', title: 'Reviewed', width: 90, minWidth: 70, maxWidth: 120 },
+    { key: 'name', title: <SortableHeader column="name">Task Name</SortableHeader>, width: 300, minWidth: 150, maxWidth: 500 },
+    { key: 'project', title: <SortableHeader column="project">Project</SortableHeader>, width: 180, minWidth: 100, maxWidth: 300 },
+    { key: 'field', title: <SortableHeader column="field">Field</SortableHeader>, width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'status', title: <SortableHeader column="status">Status</SortableHeader>, width: 120, minWidth: 80, maxWidth: 200 },
+    { key: 'priority', title: <SortableHeader column="priority" className="w-full justify-center">Priority</SortableHeader>, width: 100, minWidth: 70, maxWidth: 150 },
+    { key: 'do_on_date', title: <SortableHeader column="do_on_date">Due Date</SortableHeader>, width: 120, minWidth: 100, maxWidth: 180 },
+    { key: 'time_expenditure', title: <SortableHeader column="time_expenditure">Time Est.</SortableHeader>, width: 100, minWidth: 80, maxWidth: 150 },
+    { key: 'reviewed', title: <SortableHeader column="reviewed">Reviewed</SortableHeader>, width: 90, minWidth: 70, maxWidth: 120 },
     { key: 'url', title: 'URL', width: 100, minWidth: 80, maxWidth: 150 },
-    { key: 'created', title: (
-      <button
-        onClick={() => handleSort('created')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Created</span>
-        {sortBy === 'created' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 120, minWidth: 100, maxWidth: 180 },
-    { key: 'updated', title: (
-      <button
-        onClick={() => handleSort('updated')}
-        className="flex items-center space-x-2 hover:text-foreground transition-colors"
-      >
-        <span>Last Updated</span>
-        {sortBy === 'updated' && (
-          <span className="text-xs">
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </button>
-    ), width: 140, minWidth: 100, maxWidth: 200 },
+    { key: 'created', title: <SortableHeader column="created">Created</SortableHeader>, width: 120, minWidth: 100, maxWidth: 180 },
+    { key: 'updated', title: <SortableHeader column="updated">Last Updated</SortableHeader>, width: 140, minWidth: 100, maxWidth: 200 },
     { key: 'actions', title: '', width: 80, minWidth: 60, maxWidth: 120 }
   ];
 
-  const { columns, handleColumnResize, handleColumnReorder, isLoading: columnsLoading } = useResizableColumns('tasks', defaultColumns);
+  const { columns, handleColumnResize, handleColumnReorder, isLoading: _columnsLoading } = useResizableColumns('tasks', defaultColumns);
 
   // Mutation for updating task name
   const updateTaskMutation = useMutation({
@@ -165,13 +159,37 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
     let bValue: any;
 
     switch (sortBy) {
+      case 'name':
+        aValue = (a.task_name || a.name || '').toLowerCase();
+        bValue = (b.task_name || b.name || '').toLowerCase();
+        break;
       case 'project':
         aValue = (a.project_name || '').toLowerCase();
         bValue = (b.project_name || '').toLowerCase();
         break;
+      case 'field':
+        aValue = (a.field_name || '').toLowerCase();
+        bValue = (b.field_name || '').toLowerCase();
+        break;
+      case 'status':
+        aValue = a.done_at ? 1 : 0;
+        bValue = b.done_at ? 1 : 0;
+        break;
       case 'priority':
         aValue = a.priority || 0;
         bValue = b.priority || 0;
+        break;
+      case 'do_on_date':
+        aValue = a.do_on_date ? new Date(a.do_on_date).getTime() : 0;
+        bValue = b.do_on_date ? new Date(b.do_on_date).getTime() : 0;
+        break;
+      case 'time_expenditure':
+        aValue = (a.time_expenditure || '').toLowerCase();
+        bValue = (b.time_expenditure || '').toLowerCase();
+        break;
+      case 'reviewed':
+        aValue = a.reviewed ? 1 : 0;
+        bValue = b.reviewed ? 1 : 0;
         break;
       case 'created':
         aValue = new Date(a.created_at).getTime();
@@ -234,7 +252,7 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
   };
 
   // Group tasks if groupBy is selected
-  const groupedTasks = useGroupBy(sortedTasks, groupBy, getGroupValue);
+  const groupedTasks = useGroupBy(sortedTasks, groupBy || null, getGroupValue);
 
   if (tasks.length === 0) {
     return (
@@ -263,37 +281,48 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
         {groupBy && ` grouped by ${groupBy}`}
       </div>
 
-      {/* Grouped Tables or Single Table */}
-      {groupedTasks.map((group, groupIndex) => (
-        <div key={group.groupName || 'main'} className="space-y-4">
-          {/* Group Header (only show if there's a grouping) */}
-          {groupBy && group.groupName && (
-            <div className="flex items-center space-x-2 pt-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                {group.groupName}
-              </h3>
-              <Badge variant="secondary" className="text-xs">
-                {group.items.length} task{group.items.length !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-          )}
-
-          {/* Resizable Table */}
-          <Card>
-            <CardContent className="p-0">
-              <ResizableTable 
-                columns={columns} 
-                onColumnResize={handleColumnResize}
-                onColumnReorder={handleColumnReorder}
-                className="text-sm"
-              >
+      {/* Single Table with Group Sections */}
+      <Card>
+        <CardContent className="p-0">
+          <ResizableTable 
+            columns={columns} 
+            onColumnResize={handleColumnResize}
+            onColumnReorder={handleColumnReorder}
+            className="text-sm"
+          >
+            {groupedTasks.map((group, groupIndex) => (
+              <React.Fragment key={group.groupName || 'main'}>
+                {/* Group Header Row (only show if there's a grouping) */}
+                {groupBy && group.groupName && (
+                  <tr className="bg-muted/50 border-b border-border">
+                    <td colSpan={columns.length} className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-sm font-semibold text-foreground">
+                          {group.groupName}
+                        </h3>
+                        <Badge variant="secondary" className="text-xs">
+                          {group.items.length} task{group.items.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                
+                {/* Group Items */}
                 {group.items.map((task, index) => {
+                  // Calculate global index across all groups
+                  let globalIndex = 0;
+                  for (let i = 0; i < groupIndex; i++) {
+                    globalIndex += groupedTasks[i]?.items.length || 0;
+                  }
+                  globalIndex += index + 1;
+
               const renderCell = (columnKey: string) => {
                 switch (columnKey) {
                   case 'no':
                     return (
                       <td key={columnKey} className="py-3 px-4 text-center text-muted-foreground">
-                        {index + 1}
+                        {globalIndex}
                       </td>
                     );
                   case 'name':
@@ -488,11 +517,11 @@ export function TasksList({ tasks, isLoading, showCompleted, groupBy }: TasksLis
                     </tr>
                   );
                 })}
-              </ResizableTable>
-            </CardContent>
-          </Card>
-        </div>
-      ))}
+              </React.Fragment>
+            ))}
+          </ResizableTable>
+        </CardContent>
+      </Card>
     </div>
   );
 }

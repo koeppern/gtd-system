@@ -14,8 +14,8 @@ import sys
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from config import get_supabase_client, get_database_url
-from backend.database import get_session
+from app.database import get_supabase_client
+from app.config import get_settings
 
 
 class TestDatabaseSecurity(unittest.TestCase):

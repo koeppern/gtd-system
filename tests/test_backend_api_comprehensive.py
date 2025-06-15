@@ -25,7 +25,10 @@ class TestHealthEndpoint:
         """Test health check returns success"""
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json() == {"status": "healthy", "service": "gtd-backend"}
+        result = response.json()
+        assert result["status"] == "healthy"
+        assert "app" in result
+        assert result["app"]["name"] == "GTD Backend API"
 
 class TestUserSettingsAPI:
     """Test user settings endpoints with device-specific support"""

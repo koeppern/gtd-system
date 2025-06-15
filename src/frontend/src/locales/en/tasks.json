@@ -1,0 +1,25 @@
+{
+  "title": "Tasks",
+  "description": "Manage your GTD tasks and track completion",
+  "table": {
+    "taskName": "Task Name",
+    "summary": "Showing {count} {type} tasks",
+    "summaryWithGrouping": "Showing {count} {type} tasks grouped by {groupBy}",
+    "noTasksFound": "No tasks found",
+    "noActiveTasks": "No active tasks",
+    "noTasksDescription": "No tasks match your current search criteria.",
+    "noActiveTasksDescription": "You don't have any active tasks yet. Create your first task to get started.",
+    "tasksCount": "{count} task{plural}",
+    "activeSummary": "{count} Active",
+    "completedSummary": "{count} Completed"
+  },
+  "grouping": {
+    "status": "Status",
+    "project": "Project",
+    "priority": "Priority",
+    "doThisWeek": "Do This Week"
+  },
+  "placeholders": {
+    "taskName": "Task name"
+  }
+}

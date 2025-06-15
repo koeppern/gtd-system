@@ -67,7 +67,7 @@ export function ResizableTable({
     setResizing(columnKey);
     setIsDragging(true);
     startX.current = e.clientX;
-    startWidth.current = columnWidths[columnKey];
+    startWidth.current = columnWidths[columnKey] || 0;
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -95,7 +95,7 @@ export function ResizableTable({
   const handleMouseUp = useCallback(async () => {
     console.log('Mouse up - resizing:', resizing);
     if (resizing && onColumnResize) {
-      const currentWidth = columnWidths[resizing];
+      const currentWidth = columnWidths[resizing] || 0;
       try {
         await onColumnResize(resizing, currentWidth);
       } catch (error) {
@@ -123,6 +123,8 @@ export function ResizableTable({
         document.body.style.userSelect = '';
       };
     }
+    
+    return undefined;
   }, [resizing, isDragging, handleMouseMove, handleMouseUp]);
 
   // Cleanup event listeners on unmount
@@ -154,12 +156,12 @@ export function ResizableTable({
             />
           ))}
         </colgroup>
-        <thead>
+        <thead className="sticky top-0 bg-background z-10">
           <tr>
             {columns.map((col, index) => (
               <th 
                 key={col.key}
-                className="relative border-b border-border text-left"
+                className="relative border-b border-border text-left bg-background"
               >
                 <div className="px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -260,7 +262,7 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
           const existingKeys = new Set(orderSetting);
           const newColumns = defaultColumns.filter(col => !existingKeys.has(col.key));
           
-          updatedColumns = [...orderedColumns, ...newColumns];
+          updatedColumns = [...orderedColumns as any[], ...newColumns];
         } catch (e) {
           console.warn('Failed to parse stored column order');
         }
@@ -319,7 +321,9 @@ export function useResizableColumns(tableKey: string, defaultColumns: ResizableT
   const handleColumnReorder = async (fromIndex: number, toIndex: number) => {
     const newColumns = [...columns];
     const [movedColumn] = newColumns.splice(fromIndex, 1);
-    newColumns.splice(toIndex, 0, movedColumn);
+    if (movedColumn) {
+      newColumns.splice(toIndex, 0, movedColumn);
+    }
     
     setColumns(newColumns);
     

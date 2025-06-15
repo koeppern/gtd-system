@@ -1,0 +1,25 @@
+{
+  "title": "Aufgaben",
+  "description": "Verwalten Sie Ihre GTD-Aufgaben und verfolgen Sie die Fertigstellung",
+  "table": {
+    "taskName": "Aufgabenname",
+    "summary": "{count} {type} Aufgaben werden angezeigt",
+    "summaryWithGrouping": "{count} {type} Aufgaben werden angezeigt, gruppiert nach {groupBy}",
+    "noTasksFound": "Keine Aufgaben gefunden",
+    "noActiveTasks": "Keine aktiven Aufgaben",
+    "noTasksDescription": "Keine Aufgaben entsprechen Ihren aktuellen Suchkriterien.",
+    "noActiveTasksDescription": "Sie haben noch keine aktiven Aufgaben. Erstellen Sie Ihre erste Aufgabe, um zu beginnen.",
+    "tasksCount": "{count} Aufgabe{plural}",
+    "activeSummary": "{count} Aktiv",
+    "completedSummary": "{count} Abgeschlossen"
+  },
+  "grouping": {
+    "status": "Status",
+    "project": "Projekt",
+    "priority": "Priorität",
+    "doThisWeek": "Diese Woche erledigen"
+  },
+  "placeholders": {
+    "taskName": "Aufgabenname"
+  }
+}

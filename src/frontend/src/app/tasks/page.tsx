@@ -2,25 +2,37 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/app-layout';
 import { TasksList } from '@/components/tasks/tasks-list';
 import { Pagination, usePagination } from '@/components/ui/pagination';
 import { GroupByDropdown, GroupByOption } from '@/components/ui/group-by-dropdown';
 import { api } from '@/lib/api';
+import { useKeyboardShortcuts, useSearchFieldRef } from '@/hooks/use-keyboard-shortcuts';
 
 export default function TasksPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [groupBy, setGroupBy] = useState<string | null>(null);
+  const t = useTranslations('tasks');
+  const tCommon = useTranslations('common');
+
+  // Search field refs and keyboard shortcuts for tasks
+  const { ref: taskSearchRef, searchFieldRef: taskSearchFieldRef } = useSearchFieldRef();
+  
+  // Initialize keyboard shortcuts for context search (CTRL-SHIFT-F)
+  useKeyboardShortcuts({
+    contextSearchRef: taskSearchFieldRef
+  });
 
   // Define grouping options for tasks (only meaningful columns)
   const groupByOptions: GroupByOption[] = [
-    { key: 'project', label: 'Project', enabled: true },
-    { key: 'status', label: 'Status', enabled: true },
-    { key: 'priority', label: 'Priority', enabled: true },
-    { key: 'field', label: 'Field', enabled: true },
+    { key: 'project', label: t('grouping.project'), enabled: true },
+    { key: 'status', label: t('grouping.status'), enabled: true },
+    { key: 'priority', label: t('grouping.priority'), enabled: true },
+    { key: 'field', label: tCommon('table.field'), enabled: true },
     { key: 'do_today', label: 'Do Today', enabled: true },
-    { key: 'do_this_week', label: 'Do This Week', enabled: true },
+    { key: 'do_this_week', label: t('grouping.doThisWeek'), enabled: true },
     { key: 'is_reading', label: 'Reading Tasks', enabled: true },
     { key: 'wait_for', label: 'Waiting For', enabled: true },
     { key: 'postponed', label: 'Postponed', enabled: true },
@@ -79,9 +91,9 @@ export default function TasksPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             <p className="text-muted-foreground">
-              Manage your GTD tasks and track progress
+              {t('description')}
             </p>
           </div>
           
@@ -89,7 +101,7 @@ export default function TasksPage() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-muted-foreground">
-                Show:
+                {tCommon('buttons.show')}
               </label>
               <div className="flex rounded-lg border border-border">
                 <button
@@ -100,7 +112,7 @@ export default function TasksPage() {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Active
+                  {tCommon('buttons.active')}
                 </button>
                 <button
                   onClick={() => setShowCompleted(true)}
@@ -110,7 +122,7 @@ export default function TasksPage() {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  All Tasks
+                  All {t('title')}
                 </button>
               </div>
             </div>
@@ -120,10 +132,11 @@ export default function TasksPage() {
         {/* Search, Group By and Pagination Row */}
         <div className="flex items-center justify-between gap-4">
           {/* Search */}
-          <div className="max-w-md">
+          <div className="max-w-4xl">
             <input
+              ref={taskSearchRef}
               type="text"
-              placeholder="Search tasks..."
+              placeholder={tCommon('search.tasksPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"

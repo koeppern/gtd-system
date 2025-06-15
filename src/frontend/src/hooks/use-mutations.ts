@@ -178,7 +178,7 @@ export const useFieldMutations = () => {
   const createField = useMutation({
     mutationFn: (data: FieldFormData) => api.fields.create(data),
     onSuccess: (newField: Field) => {
-      toast.success(`Field "${newField.field_name}" created successfully`);
+      toast.success(`Field "${(newField as any).field_name || newField.name || newField.id}" created successfully`);
       cacheInvalidator.invalidateFieldRelated(newField.id, 'background');
     },
     onError: (error) => {
@@ -191,7 +191,7 @@ export const useFieldMutations = () => {
     mutationFn: ({ id, data }: { id: number; data: Partial<FieldFormData> }) => 
       api.fields.update(id, data),
     onSuccess: (updatedField: Field) => {
-      toast.success(`Field "${updatedField.field_name}" updated successfully`);
+      toast.success(`Field "${(updatedField as any).field_name || updatedField.name || updatedField.id}" updated successfully`);
       cacheInvalidator.invalidateFieldRelated(updatedField.id, 'immediate'); // Fields need immediate refresh
     },
     onError: (error) => {

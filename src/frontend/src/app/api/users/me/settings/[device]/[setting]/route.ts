@@ -15,7 +15,7 @@ const settingsStore = new Map<string, any>();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { device: string; setting: string } }
+  { params }: { params: Promise<{ device: string; setting: string }> }
 ) {
   try {
     // Extract session
@@ -25,7 +25,7 @@ export async function GET(
     }
 
     const { userId } = session;
-    const { device, setting } = params;
+    const { device, setting } = await params;
 
     // Generate storage key
     const storageKey = `${userId}:${device}:${setting}`;
@@ -52,7 +52,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { device: string; setting: string } }
+  { params }: { params: Promise<{ device: string; setting: string }> }
 ) {
   try {
     // Extract session
@@ -62,7 +62,7 @@ export async function PUT(
     }
 
     const { userId } = session;
-    const { device, setting } = params;
+    const { device, setting } = await params;
 
     // Parse request body
     const settingValue = await request.json();
@@ -90,7 +90,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { device: string; setting: string } }
+  { params }: { params: Promise<{ device: string; setting: string }> }
 ) {
   try {
     // Extract session
@@ -100,7 +100,7 @@ export async function DELETE(
     }
 
     const { userId } = session;
-    const { device, setting } = params;
+    const { device, setting } = await params;
 
     // Generate storage key
     const storageKey = `${userId}:${device}:${setting}`;

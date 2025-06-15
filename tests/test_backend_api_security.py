@@ -18,8 +18,8 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'backend'))
 
-from backend.main import app
-from backend.dependencies import get_current_user, get_db
+from backend.app.main import app
+from backend.app.database import get_db
 
 
 class TestAPIAuthentication(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestAPIAuthentication(unittest.TestCase):
         self.invalid_token = "invalid.token.format"
         
         # Mock database
-        self.db_patcher = patch('backend.dependencies.get_db')
+        self.db_patcher = patch('backend.app.dependencies.get_db')
         self.mock_db = self.db_patcher.start()
 
     def tearDown(self):
@@ -50,12 +50,12 @@ class TestAPIAuthentication(unittest.TestCase):
 
     def test_protected_endpoint_with_valid_token(self):
         """Test accessing protected endpoint with valid token"""
-        with patch('backend.dependencies.verify_token') as mock_verify:
+        with patch('backend.app.dependencies.verify_token') as mock_verify:
             mock_verify.return_value = {'sub': 'test-user-id', 'email': 'test@test.com'}
             
             headers = {'Authorization': f'Bearer {self.valid_token}'}
             
-            with patch('backend.projects.get_projects') as mock_get_projects:
+            with patch('backend.app.api.projects.get_projects') as mock_get_projects:
                 mock_get_projects.return_value = []
                 
                 response = self.client.get("/api/projects/", headers=headers)
@@ -65,7 +65,7 @@ class TestAPIAuthentication(unittest.TestCase):
 
     def test_protected_endpoint_with_expired_token(self):
         """Test accessing protected endpoint with expired token"""
-        with patch('backend.dependencies.verify_token') as mock_verify:
+        with patch('backend.app.dependencies.verify_token') as mock_verify:
             mock_verify.side_effect = HTTPException(status_code=401, detail="Token expired")
             
             headers = {'Authorization': f'Bearer {self.expired_token}'}
@@ -87,11 +87,11 @@ class TestAPIAuthentication(unittest.TestCase):
         user1_id = 'user1-id'
         user2_id = 'user2-id'
         
-        with patch('backend.dependencies.verify_token') as mock_verify:
+        with patch('backend.app.dependencies.verify_token') as mock_verify:
             # Test user1 access
             mock_verify.return_value = {'sub': user1_id, 'email': 'user1@test.com'}
             
-            with patch('backend.projects.get_projects') as mock_get_projects:
+            with patch('backend.app.api.projects.get_projects') as mock_get_projects:
                 mock_get_projects.return_value = [
                     {'id': 1, 'user_id': user1_id, 'project_name': 'User1 Project'}
                 ]
@@ -111,10 +111,10 @@ class TestAPIAuthentication(unittest.TestCase):
         current_user_id = 'current-user'
         other_user_project_id = 999
         
-        with patch('backend.dependencies.verify_token') as mock_verify:
+        with patch('backend.app.dependencies.verify_token') as mock_verify:
             mock_verify.return_value = {'sub': current_user_id, 'email': 'current@test.com'}
             
-            with patch('backend.projects.get_project') as mock_get_project:
+            with patch('backend.app.api.projects.get_project') as mock_get_project:
                 # Mock attempt to access other user's project
                 mock_get_project.return_value = None  # Project not found due to RLS
                 
@@ -134,7 +134,7 @@ class TestAPIInputValidation(unittest.TestCase):
         self.valid_headers = {'Authorization': 'Bearer valid-token'}
         
         # Mock authentication
-        self.auth_patcher = patch('backend.dependencies.verify_token')
+        self.auth_patcher = patch('backend.app.dependencies.verify_token')
         self.mock_auth = self.auth_patcher.start()
         self.mock_auth.return_value = {'sub': 'test-user', 'email': 'test@test.com'}
 
@@ -153,7 +153,7 @@ class TestAPIInputValidation(unittest.TestCase):
         ]
         
         for malicious_input in malicious_inputs:
-            with patch('backend.projects.get_projects') as mock_get:
+            with patch('backend.app.api.projects.get_projects') as mock_get:
                 mock_get.return_value = []
                 
                 # Test in query parameters
@@ -224,7 +224,7 @@ class TestAPIInputValidation(unittest.TestCase):
         ]
         
         for unicode_input in unicode_tests:
-            with patch('backend.projects.create_project') as mock_create:
+            with patch('backend.app.api.projects.create_project') as mock_create:
                 mock_create.return_value = {'id': 1, 'project_name': unicode_input}
                 
                 response = self.client.post(
@@ -246,7 +246,7 @@ class TestAPIRateLimiting(unittest.TestCase):
         self.valid_headers = {'Authorization': 'Bearer valid-token'}
         
         # Mock authentication
-        self.auth_patcher = patch('backend.dependencies.verify_token')
+        self.auth_patcher = patch('backend.app.dependencies.verify_token')
         self.mock_auth = self.auth_patcher.start()
         self.mock_auth.return_value = {'sub': 'test-user', 'email': 'test@test.com'}
 
@@ -282,7 +282,7 @@ class TestAPIRateLimiting(unittest.TestCase):
         results = []
         
         def make_request():
-            with patch('backend.projects.get_projects') as mock_get:
+            with patch('backend.app.api.projects.get_projects') as mock_get:
                 mock_get.return_value = []
                 response = self.client.get("/api/projects/", headers=self.valid_headers)
                 results.append(response.status_code)
@@ -312,7 +312,7 @@ class TestAPIErrorHandling(unittest.TestCase):
         self.valid_headers = {'Authorization': 'Bearer valid-token'}
         
         # Mock authentication
-        self.auth_patcher = patch('backend.dependencies.verify_token')
+        self.auth_patcher = patch('backend.app.dependencies.verify_token')
         self.mock_auth = self.auth_patcher.start()
         self.mock_auth.return_value = {'sub': 'test-user', 'email': 'test@test.com'}
 
