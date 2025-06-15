@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +10,15 @@ import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
 import { ResizableTable, useResizableColumns } from '@/components/ui/resizable-table';
 import { useGroupBy } from '@/components/ui/group-by-dropdown';
+import { useDeviceType } from '@/hooks/use-device-type';
+import { useShiftClick } from '@/hooks/use-shift-click';
 import { api } from '@/lib/api';
 import { 
   FolderIcon,
   EllipsisVerticalIcon,
   ChevronUpIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline';
 import { 
   FolderIcon as FolderIconSolid,
@@ -52,9 +56,20 @@ type SortableColumn = 'name' | 'field' | 'status' | 'tasks' | 'keywords' | 'moth
 export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: ProjectsListProps) {
   const [sortBy, setSortBy] = useState<SortableColumn>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
+  const { isDesktop, isMobile } = useDeviceType();
+  const { handleRowClick } = useShiftClick();
+
+  // Navigate to edit page
+  const navigateToEdit = React.useCallback((projectId: number) => {
+    const currentUrl = `${pathname}${window.location.search}`;
+    router.push(`/projects/${projectId}/edit?returnTo=${encodeURIComponent(currentUrl)}`);
+  }, [router, pathname]);
 
   // Auto-sort by grouped column when grouping changes
   React.useEffect(() => {
@@ -452,14 +467,33 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                     );
                   case 'actions':
                     return (
-                      <td key={columnKey} className="py-3 px-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
-                        >
-                          <EllipsisVerticalIcon className="h-4 w-4" />
-                        </Button>
+                      <td key={columnKey} className="py-3 px-4 relative">
+                        {/* Desktop: Edit button on hover */}
+                        {isDesktop && hoveredRowId === project.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToEdit(project.id);
+                            }}
+                            className="h-8 w-8 p-0 opacity-80 hover:opacity-100"
+                            title="Edit project (or Shift+Click row)"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Fallback menu button when not hovering */}
+                        {(!isDesktop || hoveredRowId !== project.id) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
+                          >
+                            <EllipsisVerticalIcon className="h-4 w-4" />
+                          </Button>
+                        )}
                       </td>
                     );
                   default:
@@ -470,7 +504,12 @@ export function ProjectsList({ projects, isLoading, showCompleted, groupBy }: Pr
                   return (
                     <tr 
                       key={project.id} 
-                      className="border-b border-border hover:bg-muted/50 transition-colors"
+                      className={`border-b border-border hover:bg-muted/50 transition-colors ${
+                        isMobile ? 'cursor-pointer' : ''
+                      }`}
+                      onMouseEnter={isDesktop ? () => setHoveredRowId(project.id) : undefined}
+                      onMouseLeave={isDesktop ? () => setHoveredRowId(null) : undefined}
+                      onClick={isMobile ? () => navigateToEdit(project.id) : (e) => handleRowClick(e, project.id, navigateToEdit)}
                     >
                       {columns.map((col) => renderCell(col.key))}
                     </tr>

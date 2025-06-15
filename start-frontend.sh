@@ -118,7 +118,6 @@ fi
 
 # Start the frontend development server
 echo -e "${GREEN}🌟 Starting frontend development server...${NC}"
-echo -e "${BLUE}🌐 Frontend will be available at: http://localhost:3000${NC}"
 echo -e "${BLUE}📡 Backend API endpoint: http://localhost:8000/api${NC}"
 echo -e "${YELLOW}💡 Press Ctrl+C to stop the server${NC}"
 echo ""
@@ -137,21 +136,77 @@ open_browser() {
     fi
 }
 
-# Start the server in background and wait for it to be ready
+# Function to detect port from server output
+detect_and_open_browser() {
+    local server_output_file="/tmp/nextjs_output.log"
+    local detected_port=""
+    
+    # Monitor the server output for port information
+    for i in {1..30}; do
+        if [ -f "$server_output_file" ]; then
+            # Look for Next.js port patterns in the output
+            if grep -q "Local:.*http://localhost:" "$server_output_file"; then
+                detected_port=$(grep "Local:.*http://localhost:" "$server_output_file" | sed -n 's/.*http:\/\/localhost:\([0-9]*\).*/\1/p' | head -1)
+                if [ -n "$detected_port" ]; then
+                    echo -e "${GREEN}✅ Server is ready!${NC}"
+                    echo -e "${BLUE}🌐 Opening http://localhost:$detected_port in Brave browser...${NC}"
+                    open_browser "http://localhost:$detected_port"
+                    break
+                fi
+            elif grep -q "ready - started server on.*http://localhost:" "$server_output_file"; then
+                detected_port=$(grep "ready - started server on.*http://localhost:" "$server_output_file" | sed -n 's/.*http:\/\/localhost:\([0-9]*\).*/\1/p' | head -1)
+                if [ -n "$detected_port" ]; then
+                    echo -e "${GREEN}✅ Server is ready!${NC}"
+                    echo -e "${BLUE}🌐 Opening http://localhost:$detected_port in Brave browser...${NC}"
+                    open_browser "http://localhost:$detected_port"
+                    break
+                fi
+            fi
+        fi
+        sleep 1
+    done
+    
+    # Fallback: try common ports
+    if [ -z "$detected_port" ]; then
+        echo -e "${YELLOW}⚠️  Could not detect port from output, trying common ports...${NC}"
+        for port in 3000 3001 3002 3003; do
+            if curl -s "http://localhost:$port" > /dev/null 2>&1; then
+                echo -e "${GREEN}✅ Server is ready!${NC}"
+                echo -e "${BLUE}🌐 Opening http://localhost:$port in Brave browser...${NC}"
+                open_browser "http://localhost:$port"
+                break
+            fi
+        done
+    fi
+}
+
+# Start the server and capture output
 echo -e "${BLUE}🚀 Starting server...${NC}"
-$START_COMMAND &
+server_output_file="/tmp/nextjs_output.log"
+$START_COMMAND > "$server_output_file" 2>&1 &
 SERVER_PID=$!
 
-# Wait for the server to start (check every 2 seconds, max 30 seconds)
+# Start port detection in background
+detect_and_open_browser &
+DETECTOR_PID=$!
+
+# Show server output
 echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
-for i in {1..15}; do
-    if curl -s http://localhost:3000 > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Server is ready!${NC}"
-        open_browser "http://localhost:3000"
-        break
-    fi
-    sleep 2
-done
+tail -f "$server_output_file" &
+TAIL_PID=$!
+
+# Cleanup function
+cleanup() {
+    echo -e "${YELLOW}🛑 Shutting down...${NC}"
+    kill $SERVER_PID 2>/dev/null || true
+    kill $DETECTOR_PID 2>/dev/null || true
+    kill $TAIL_PID 2>/dev/null || true
+    rm -f "$server_output_file"
+    exit 0
+}
+
+# Set up signal handlers
+trap cleanup SIGINT SIGTERM
 
 # Keep the script running to show server output
 wait $SERVER_PID

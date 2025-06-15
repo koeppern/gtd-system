@@ -2,12 +2,16 @@
 
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter, usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InlineEdit } from '@/components/ui/inline-edit';
 import { ResizableTable, useResizableColumns } from '@/components/ui/resizable-table';
 import { useGroupBy } from '@/components/ui/group-by-dropdown';
+import { useDeviceType } from '@/hooks/use-device-type';
+import { useShiftClick } from '@/hooks/use-shift-click';
 import { api } from '@/lib/api';
 import { 
   ClockIcon,
@@ -18,6 +22,7 @@ import {
   PauseIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline';
 import { 
   CheckCircleIcon as CheckCircleIconSolid,
@@ -62,7 +67,20 @@ type SortableTaskColumn = 'name' | 'project' | 'field' | 'status' | 'priority' |
 export function TasksList({ tasks, isLoading: _isLoading, showCompleted, groupBy }: TasksListProps) {
   const [sortBy, setSortBy] = useState<SortableTaskColumn>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const t = useTranslations('tasks');
+  const tCommon = useTranslations('common');
+  const { isDesktop, isMobile } = useDeviceType();
+  const { handleRowClick } = useShiftClick();
+
+  // Navigate to edit page
+  const navigateToEdit = React.useCallback((taskId: number) => {
+    const currentUrl = `${pathname}${window.location.search}`;
+    router.push(`/tasks/${taskId}/edit?returnTo=${encodeURIComponent(currentUrl)}`);
+  }, [router, pathname]);
 
   // Auto-sort by grouped column when grouping changes
   React.useEffect(() => {
@@ -493,14 +511,33 @@ export function TasksList({ tasks, isLoading: _isLoading, showCompleted, groupBy
                     );
                   case 'actions':
                     return (
-                      <td key={columnKey} className="py-3 px-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
-                        >
-                          <EllipsisVerticalIcon className="h-4 w-4" />
-                        </Button>
+                      <td key={columnKey} className="py-3 px-4 relative">
+                        {/* Desktop: Edit button on hover */}
+                        {isDesktop && hoveredRowId === task.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToEdit(task.id);
+                            }}
+                            className="h-8 w-8 p-0 opacity-80 hover:opacity-100"
+                            title="Edit task (or Shift+Click row)"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {/* Fallback menu button when not hovering */}
+                        {(!isDesktop || hoveredRowId !== task.id) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 opacity-50 hover:opacity-100"
+                          >
+                            <EllipsisVerticalIcon className="h-4 w-4" />
+                          </Button>
+                        )}
                       </td>
                     );
                   default:
@@ -511,7 +548,12 @@ export function TasksList({ tasks, isLoading: _isLoading, showCompleted, groupBy
                   return (
                     <tr 
                       key={task.id} 
-                      className="border-b border-border hover:bg-muted/50 transition-colors"
+                      className={`border-b border-border hover:bg-muted/50 transition-colors ${
+                        isMobile ? 'cursor-pointer' : ''
+                      }`}
+                      onMouseEnter={isDesktop ? () => setHoveredRowId(task.id) : undefined}
+                      onMouseLeave={isDesktop ? () => setHoveredRowId(null) : undefined}
+                      onClick={isMobile ? () => navigateToEdit(task.id) : (e) => handleRowClick(e, task.id, navigateToEdit)}
                     >
                       {columns.map((col) => renderCell(col.key))}
                     </tr>
