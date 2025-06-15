@@ -70,34 +70,34 @@ export default function TaskEditPage() {
 
   return (
     <div className="space-y-6">
-        {/* Header with Back Button */}
-        <div className="flex items-center space-x-4">
-          <BackButton onClick={handleBack} />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {isLoading ? tCommon('common.loading') : `Edit: ${task?.task_name}`}
-            </h1>
-            <p className="text-muted-foreground">
-              Modify task details and settings
-            </p>
+      {/* Header with Back Button */}
+      <div className="flex items-center space-x-4">
+        <BackButton onClick={handleBack} />
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isLoading ? tCommon('common.loading') : `Edit: ${task?.task_name}`}
+          </h1>
+          <p className="text-muted-foreground">
+            Modify task details and settings
+          </p>
+        </div>
+      </div>
+
+      {/* Edit Form */}
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">{tCommon('common.loading')}</p>
           </div>
         </div>
-
-        {/* Edit Form */}
-        {isLoading ? (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-2 text-muted-foreground">{tCommon('common.loading')}</p>
-            </div>
-          </div>
-        ) : task ? (
-          <TaskEditForm 
-            task={task} 
-            onSaveSuccess={handleSaveSuccess}
-            onCancel={handleBack}
-          />
-        ) : null}
+      ) : task ? (
+        <TaskEditForm 
+          task={task} 
+          onSaveSuccess={handleSaveSuccess}
+          onCancel={handleBack}
+        />
+      ) : null}
     </div>
   );
 }
